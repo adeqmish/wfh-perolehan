@@ -44,7 +44,7 @@
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/UNISEL_logo.svg/320px-UNISEL_logo.svg.png" alt="UNISEL"/>
       <div>
         <h1>Upload & Gabung (PO+PR) → Hantar ke Google Drive</h1>
-        <p class="sub">Fail akan digabung (PDF), dinamakan semula ikut nombor PO & PR, dan dihantar ke folder bulan ikut <em>Purchase Order Date</em>. Kini dengan popup dalam halaman yang sama.</p>
+        <p class="sub">Fail akan digabung (PDF), dinamakan semula ikut nombor PO & PR, dan dihantar ke folder bulan ikut <em>Purchase Order Date</em>. Popup status dipaparkan dalam halaman yang sama.</p>
       </div>
     </header>
 
@@ -84,7 +84,7 @@
       </div>
       <div id="status" class="status"></div>
 
-      <!-- Hidden inputs (akan diisi masa submit) -->
+      <!-- Hidden inputs (diisi masa submit) -->
       <input type="hidden" name="poNumber" id="poNumberHidden" />
       <input type="hidden" name="prNumber" id="prNumberHidden" />
       <input type="hidden" name="poDateISO" id="poDateHidden" />
@@ -157,15 +157,23 @@
     return uint8ToBase64(bytes);
   }
 
-  // Dengar mesej dari Apps Script (dihantar melalui postMessage dari response dalam iframe)
+  // Dengar mesej dari Apps Script (postMessage di dalam respons yang di-load ke iframe)
+  let messageReceived = false;
   window.addEventListener('message', (event) => {
-    const allowed = ['https://script.google.com','https://script.googleusercontent.com'];
-    if (!allowed.includes(event.origin)) {
-      // console.warn('Asal tak dibenarkan:', event.origin);
-      return; // keselamatan: tolak mesej dari origin lain
+    // Longgar sikit: benarkan host googleusercontent / google.com
+    let okOrigin = false;
+    try {
+      const host = new URL(event.origin).hostname;
+      okOrigin = (host === 'script.google.com') || host.endsWith('.googleusercontent.com') || host.endsWith('.google.com');
+    } catch(_){}
+    if (!okOrigin) return;
+
+    let data = event.data;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch(_){}
     }
-    const data = event.data || {};
     if (data && data.source === 'po-pr-uploader'){
+      messageReceived = true;
       if (data.ok) {
         openModal('PO+PR Berjaya Dimuat Naik', `
           <p><strong>Berjaya!</strong></p>
@@ -173,7 +181,6 @@
           <p>Lokasi: <code>${data.folderPath}</code></p>
           <p><a href="${data.url}" target="_blank" rel="noopener">Buka dalam Google Drive</a></p>
         `);
-        // Kosongkan borang supaya boleh isi baharu
         form.reset();
         setStatus('Selesai dihantar.', true);
       } else {
@@ -222,8 +229,16 @@
       document.getElementById('mergedHidden').value = mergedBase64;
 
       // Hantar (akan load ke iframe). Respon akan postMessage balik ke parent.
+      let messageReceived = false;
       form.submit();
       setStatus('Menghantar ke Google Drive…', true);
+
+      // Fallback: jika tiada postMessage selepas 10s, maklumkan pengguna
+      setTimeout(() => {
+        if (!messageReceived) {
+          openModal('Status Penghantaran', `<p>Kami tidak menerima respon automatik daripada Apps Script. Namun jika fail sudah ada di Google Drive, proses sebenarnya berjaya.</p>`);
+        }
+      }, 10000);
 
     } catch (err){
       console.error(err);
