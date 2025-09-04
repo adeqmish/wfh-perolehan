@@ -28,6 +28,14 @@
     .status.err{color:var(--err)}
     footer{opacity:.7;margin-top:26px;font-size:12px}
     @media (max-width:720px){.grid{grid-template-columns:1fr}}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;max-width:560px;width:min(92%,560px);padding:20px;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+    .modal h3{margin:.2rem 0 10px}
+    .modal .muted{color:#b8c7ff}
+    .modal .actions{justify-content:flex-end;margin-top:16px}
+    .hidden{display:none}
   </style>
 </head>
 <body>
@@ -36,7 +44,7 @@
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/UNISEL_logo.svg/320px-UNISEL_logo.svg.png" alt="UNISEL"/>
       <div>
         <h1>Upload & Gabung (PO+PR) → Hantar ke Google Drive</h1>
-        <p class="sub">Fail akan digabung (PDF), dinamakan semula ikut nombor PO & PR, dan dihantar ke folder bulan ikut <em>Purchase Order Date</em>.</p>
+        <p class="sub">Fail akan digabung (PDF), dinamakan semula ikut nombor PO & PR, dan dihantar ke folder bulan ikut <em>Purchase Order Date</em>. Kini dengan popup dalam halaman yang sama.</p>
       </div>
     </header>
 
@@ -72,14 +80,34 @@
 
       <div class="actions">
         <button id="submitBtn" type="submit">Gabung & Hantar</button>
-        <div class="note">Selesai hantar, satu tab baru akan dibuka dengan status & pautan Drive.</div>
+        <div class="note">Popup status akan keluar dalam halaman ini. Lepas tekan OK, borang akan kosong semula.</div>
       </div>
       <div id="status" class="status"></div>
+
+      <!-- Hidden inputs (akan diisi masa submit) -->
+      <input type="hidden" name="poNumber" id="poNumberHidden" />
+      <input type="hidden" name="prNumber" id="prNumberHidden" />
+      <input type="hidden" name="poDateISO" id="poDateHidden" />
+      <input type="hidden" name="mergedPdfBase64" id="mergedHidden" />
     </form>
 
+    <!-- Iframe sasaran (elak buka tab baharu) -->
+    <iframe id="hiddenUpload" name="hiddenUpload" style="display:none"></iframe>
+
     <footer>
-      <p>Tip: Jika tab tidak dibuka, semak pop‑up blocker browser.</p>
+      <p>Jika popup tidak muncul, semak <em>content blocker</em> atau extension.</p>
     </footer>
+  </div>
+
+  <!-- Modal Popup -->
+  <div id="modalWrap" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3 id="modalTitle">Status</h3>
+      <div id="modalBody" class="muted"></div>
+      <div class="actions">
+        <button id="modalOk">OK</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -89,15 +117,28 @@
   const form = document.getElementById('uform');
   const statusEl = document.getElementById('status');
   const submitBtn = document.getElementById('submitBtn');
+  const hiddenFrame = document.getElementById('hiddenUpload');
+
+  const modal = document.getElementById('modalWrap');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  const modalOk = document.getElementById('modalOk');
 
   function setStatus(msg, ok){
     statusEl.textContent = msg;
     statusEl.className = 'status ' + (ok ? 'ok' : 'err');
   }
 
+  function openModal(title, html){
+    modalTitle.textContent = title;
+    modalBody.innerHTML = html;
+    modal.classList.remove('hidden');
+  }
+  function closeModal(){ modal.classList.add('hidden'); }
+
   function uint8ToBase64(u8){
     let binary = '';
-    const chunk = 0x8000; // 32KB chunks to avoid call stack limits
+    const chunk = 0x8000;
     for(let i=0;i<u8.length;i+=chunk){
       binary += String.fromCharCode.apply(null, u8.subarray(i, i+chunk));
     }
@@ -115,6 +156,35 @@
     const bytes = await merged.save();
     return uint8ToBase64(bytes);
   }
+
+  // Dengar mesej dari Apps Script (dihantar melalui postMessage dari response dalam iframe)
+  window.addEventListener('message', (event) => {
+    const allowed = ['https://script.google.com','https://script.googleusercontent.com'];
+    if (!allowed.includes(event.origin)) {
+      // console.warn('Asal tak dibenarkan:', event.origin);
+      return; // keselamatan: tolak mesej dari origin lain
+    }
+    const data = event.data || {};
+    if (data && data.source === 'po-pr-uploader'){
+      if (data.ok) {
+        openModal('PO+PR Berjaya Dimuat Naik', `
+          <p><strong>Berjaya!</strong></p>
+          <p>Nama fail: <code>${data.filename}</code></p>
+          <p>Lokasi: <code>${data.folderPath}</code></p>
+          <p><a href="${data.url}" target="_blank" rel="noopener">Buka dalam Google Drive</a></p>
+        `);
+        // Kosongkan borang supaya boleh isi baharu
+        form.reset();
+        setStatus('Selesai dihantar.', true);
+      } else {
+        openModal('Ralat', `<p>${data.message || 'Gagal memproses data.'}</p>`);
+        setStatus('Ralat ketika hantar.', false);
+      }
+    }
+  });
+
+  modalOk.addEventListener('click', () => closeModal());
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) closeModal(); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -141,26 +211,20 @@
       setStatus('Menggabungkan PDF…', true);
       const mergedBase64 = await mergePdfs(poFile, prFile);
 
-      // Bina borang POST ke Apps Script (buka tab baharu)
-      const f = document.createElement('form');
-      f.method = 'POST';
-      f.action = SCRIPT_URL;
-      f.target = '_blank';
+      // Sediakan submission ke Apps Script melalui iframe tersembunyi
+      form.action = SCRIPT_URL;
+      form.method = 'POST';
+      form.target = 'hiddenUpload';
 
-      const add = (name, value) => {
-        const i = document.createElement('input');
-        i.type = 'hidden'; i.name = name; i.value = value; f.appendChild(i);
-      };
+      document.getElementById('poNumberHidden').value = po;
+      document.getElementById('prNumberHidden').value = pr;
+      document.getElementById('poDateHidden').value = poDate;
+      document.getElementById('mergedHidden').value = mergedBase64;
 
-      add('poNumber', po);
-      add('prNumber', pr);
-      add('poDateISO', poDate);
-      add('mergedPdfBase64', mergedBase64);
+      // Hantar (akan load ke iframe). Respon akan postMessage balik ke parent.
+      form.submit();
+      setStatus('Menghantar ke Google Drive…', true);
 
-      document.body.appendChild(f);
-      f.submit();
-      document.body.removeChild(f);
-      setStatus('Dihantar. Semak tab baharu untuk status & pautan Drive.', true);
     } catch (err){
       console.error(err);
       setStatus('Ralat ketika gabung/hantar: ' + err, false);
