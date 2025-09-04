@@ -22,20 +22,11 @@
     .actions{display:flex;gap:12px;align-items:center;margin-top:18px}
     button{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     button:disabled{opacity:.6;cursor:not-allowed}
-    .note{margin-top:6px;color:#cfd8ff;font-size:13px}
     .status{margin-top:14px;font-size:14px}
     .status.ok{color:var(--ok)}
     .status.err{color:var(--err)}
     footer{opacity:.7;margin-top:26px;font-size:12px}
     @media (max-width:720px){.grid{grid-template-columns:1fr}}
-
-    /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
-    .modal{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;max-width:560px;width:min(92%,560px);padding:20px;box-shadow:0 20px 80px rgba(0,0,0,.5)}
-    .modal h3{margin:.2rem 0 10px}
-    .modal .muted{color:#b8c7ff}
-    .modal .actions{justify-content:flex-end;margin-top:16px}
-    .hidden{display:none}
   </style>
 </head>
 <body>
@@ -43,8 +34,8 @@
     <header>
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/UNISEL_logo.svg/320px-UNISEL_logo.svg.png" alt="UNISEL"/>
       <div>
-        <h1>Upload & Gabung (PO+PR) → Hantar ke Google Drive</h1>
-        <p class="sub">Fail akan digabung (PDF), dinamakan semula ikut nombor PO & PR, dan dihantar ke folder bulan ikut <em>Purchase Order Date</em>. Popup status dipaparkan dalam halaman yang sama.</p>
+        <h1>Upload & Gabung (PO+PR) → Google Drive</h1>
+        <p class="sub">Fail anda akan digabung sebagai PDF dan dihantar ke folder bulan mengikut <em>Purchase Order Date</em>.</p>
       </div>
     </header>
 
@@ -80,61 +71,37 @@
 
       <div class="actions">
         <button id="submitBtn" type="submit">Gabung & Hantar</button>
-        <div class="note">Popup status akan keluar dalam halaman ini. Lepas tekan OK, borang akan kosong semula.</div>
       </div>
       <div id="status" class="status"></div>
 
-      <!-- Hidden inputs (diisi masa submit) -->
+      <!-- Hidden inputs → dihantar ke Apps Script -->
       <input type="hidden" name="poNumber" id="poNumberHidden" />
       <input type="hidden" name="prNumber" id="prNumberHidden" />
       <input type="hidden" name="poDateISO" id="poDateHidden" />
       <input type="hidden" name="mergedPdfBase64" id="mergedHidden" />
     </form>
 
-    <!-- Iframe sasaran (elak buka tab baharu) -->
+    <!-- Iframe sasaran (elak buka tab baharu). Kita hanya dengar event load sahaja. -->
     <iframe id="hiddenUpload" name="hiddenUpload" style="display:none"></iframe>
 
     <footer>
-      <p>Jika popup tidak muncul, semak <em>content blocker</em> atau extension.</p>
+      <p>Tip: Jika tiada apa berlaku, pastikan URL Web App <code>/exec</code> betul dan deployment terkini.</p>
     </footer>
   </div>
 
-  <!-- Modal Popup -->
-  <div id="modalWrap" class="modal-backdrop hidden" role="dialog" aria-modal="true">
-    <div class="modal">
-      <h3 id="modalTitle">Status</h3>
-      <div id="modalBody" class="muted"></div>
-      <div class="actions">
-        <button id="modalOk">OK</button>
-      </div>
-    </div>
-  </div>
-
 <script>
-  // 1) SETKAN URL WEB APP APPS SCRIPT ANDA DI SINI
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqKBcDLZ5s_Om5OHxNr0Lmt15dcVUz99YVXgDCGgaR7d8A8AEbpzD2va7ztaMPAIFV/exec"; // contoh: https://script.google.com/macros/s/AKfycbx.../exec
+  // SETKAN URL WEB APP APPS SCRIPT ANDA DI SINI
+  const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE"; // contoh: https://script.google.com/macros/s/AKfycbx.../exec
 
   const form = document.getElementById('uform');
   const statusEl = document.getElementById('status');
   const submitBtn = document.getElementById('submitBtn');
   const hiddenFrame = document.getElementById('hiddenUpload');
 
-  const modal = document.getElementById('modalWrap');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-  const modalOk = document.getElementById('modalOk');
-
   function setStatus(msg, ok){
     statusEl.textContent = msg;
     statusEl.className = 'status ' + (ok ? 'ok' : 'err');
   }
-
-  function openModal(title, html){
-    modalTitle.textContent = title;
-    modalBody.innerHTML = html;
-    modal.classList.remove('hidden');
-  }
-  function closeModal(){ modal.classList.add('hidden'); }
 
   function uint8ToBase64(u8){
     let binary = '';
@@ -157,46 +124,21 @@
     return uint8ToBase64(bytes);
   }
 
-  // Dengar mesej dari Apps Script (postMessage di dalam respons yang di-load ke iframe)
-  let messageReceived = false;
-  window.addEventListener('message', (event) => {
-    // Longgar sikit: benarkan host googleusercontent / google.com
-    let okOrigin = false;
-    try {
-      const host = new URL(event.origin).hostname;
-      okOrigin = (host === 'script.google.com') || host.endsWith('.googleusercontent.com') || host.endsWith('.google.com');
-    } catch(_){}
-    if (!okOrigin) return;
-
-    let data = event.data;
-    if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch(_){}
-    }
-    if (data && data.source === 'po-pr-uploader'){
-      messageReceived = true;
-      if (data.ok) {
-        openModal('PO+PR Berjaya Dimuat Naik', `
-          <p><strong>Berjaya!</strong></p>
-          <p>Nama fail: <code>${data.filename}</code></p>
-          <p>Lokasi: <code>${data.folderPath}</code></p>
-          <p><a href="${data.url}" target="_blank" rel="noopener">Buka dalam Google Drive</a></p>
-        `);
-        form.reset();
-        setStatus('Selesai dihantar.', true);
-      } else {
-        openModal('Ralat', `<p>${data.message || 'Gagal memproses data.'}</p>`);
-        setStatus('Ralat ketika hantar.', false);
-      }
-    }
+  // === Popup simple menggunakan alert() selepas iframe siap load ===
+  let inFlight = false;
+  hiddenFrame.addEventListener('load', () => {
+    if (!inFlight) return; // Abaikan load awal
+    inFlight = false;
+    alert('Berjaya dihantar!');
+    form.reset();
+    setStatus('', true);
+    submitBtn.disabled = false;
   });
-
-  modalOk.addEventListener('click', () => closeModal());
-  modal.addEventListener('click', (e)=>{ if(e.target===modal) closeModal(); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     setStatus('', true);
-
+    
     const po = document.getElementById('po').value.trim();
     const pr = document.getElementById('pr').value.trim();
     const poDate = document.getElementById('poDate').value; // yyyy-mm-dd
@@ -218,7 +160,7 @@
       setStatus('Menggabungkan PDF…', true);
       const mergedBase64 = await mergePdfs(poFile, prFile);
 
-      // Sediakan submission ke Apps Script melalui iframe tersembunyi
+      // Submit ke Apps Script melalui iframe tersembunyi (tanpa postMessage)
       form.action = SCRIPT_URL;
       form.method = 'POST';
       form.target = 'hiddenUpload';
@@ -228,22 +170,22 @@
       document.getElementById('poDateHidden').value = poDate;
       document.getElementById('mergedHidden').value = mergedBase64;
 
-      // Hantar (akan load ke iframe). Respon akan postMessage balik ke parent.
-      let messageReceived = false;
+      inFlight = true;
       form.submit();
       setStatus('Menghantar ke Google Drive…', true);
 
-      // Fallback: jika tiada postMessage selepas 10s, maklumkan pengguna
+      // Fallback jika response sangat lambat (contoh 20s)
       setTimeout(() => {
-        if (!messageReceived) {
-          openModal('Status Penghantaran', `<p>Kami tidak menerima respon automatik daripada Apps Script. Namun jika fail sudah ada di Google Drive, proses sebenarnya berjaya.</p>`);
+        if (inFlight) {
+          alert('Proses masih berjalan. Sila semak folder Google Drive.');
+          inFlight = false;
+          submitBtn.disabled = false;
         }
-      }, 10000);
+      }, 20000);
 
     } catch (err){
       console.error(err);
       setStatus('Ralat ketika gabung/hantar: ' + err, false);
-    } finally {
       submitBtn.disabled = false;
     }
   });
