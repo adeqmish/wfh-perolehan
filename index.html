@@ -38,6 +38,15 @@
     .modal .icon{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#0e1a3a;border:1px solid rgba(255,255,255,.08);margin:0 auto 10px;font-size:26px}
     .modal .actions{display:flex;justify-content:center;margin-top:14px}
     .modal .btn{padding:10px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+
+    /* ===== Loading Overlay ===== */
+    .loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:70}
+    .loading.show{display:flex}
+    .loading-box{width:min(92%,420px);text-align:center;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px 22px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
+    .spinner{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;border:6px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading h4{margin:.2rem 0 .2rem}
+    .loading p{margin:.1rem 0;color:#cfd8ff}
   </style>
 </head>
 <body>
@@ -112,6 +121,15 @@
     </div>
   </div>
 
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading" aria-live="polite" aria-busy="true">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <h4>Memproses…</h4>
+      <p id="loading-msg">Menggabungkan PDF</p>
+    </div>
+  </div>
+
 <script>
   // SETKAN URL WEB APP APPS SCRIPT ANDA DI SINI
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqKBcDLZ5s_Om5OHxNr0Lmt15dcVUz99YVXgDCGgaR7d8A8AEbpzD2va7ztaMPAIFV/exec"; // contoh: https://script.google.com/macros/s/AKfycbx.../exec
@@ -126,6 +144,10 @@
   const popMsg = document.getElementById('pop-msg');
   const popOk = document.getElementById('pop-ok');
 
+  // Loading elements
+  const loading = document.getElementById('loading');
+  const loadingMsg = document.getElementById('loading-msg');
+
   function setStatus(msg, ok){
     statusEl.textContent = msg;
     statusEl.className = 'status ' + (ok ? 'ok' : 'err');
@@ -134,10 +156,16 @@
   function showPopup(msg){
     if (msg) popMsg.textContent = msg;
     popup.classList.add('show');
-    // fokus pada butang untuk aksesibiliti
-    setTimeout(() => popOk.focus(), 10);
+    setTimeout(() => popOk.focus(), 50);
   }
   function hidePopup(){ popup.classList.remove('show'); }
+
+  function showLoading(msg){
+    if (msg) loadingMsg.textContent = msg;
+    loading.classList.add('show');
+  }
+  function setLoadingMessage(msg){ loadingMsg.textContent = msg; }
+  function hideLoading(){ loading.classList.remove('show'); }
 
   function uint8ToBase64(u8){
     let binary = '';
@@ -160,12 +188,12 @@
     return uint8ToBase64(bytes);
   }
 
-  // === Popup simple berasaskan event load iframe ===
+  // === Aliran: loading → (merge) → (upload) → popup ===
   let inFlight = false;
   hiddenFrame.addEventListener('load', () => {
     if (!inFlight) return; // Abaikan load awal
     inFlight = false;
-    // Tunjukkan PO/PR dalam mesej supaya jelas
+    hideLoading();
     const po = document.getElementById('po').value.trim();
     const pr = document.getElementById('pr').value.trim();
     showPopup(`PO ${po} & PR ${pr} berjaya dimuat naik.`);
@@ -174,7 +202,7 @@
     submitBtn.disabled = false;
   });
 
-  // Tutup popup: klik OK, klik luar modal, atau tekan ESC
+  // Tutup popup
   popOk.addEventListener('click', hidePopup);
   popup.addEventListener('click', (e)=>{ if(e.target===popup) hidePopup(); });
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hidePopup(); });
@@ -201,10 +229,10 @@
 
     try {
       submitBtn.disabled = true;
-      setStatus('Menggabungkan PDF…', true);
+      showLoading('Menggabungkan PDF…');
       const mergedBase64 = await mergePdfs(poFile, prFile);
 
-      // Submit ke Apps Script melalui iframe tersembunyi
+      setLoadingMessage('Menghantar ke Google Drive…');
       form.action = SCRIPT_URL;
       form.method = 'POST';
       form.target = 'hiddenUpload';
@@ -216,19 +244,20 @@
 
       inFlight = true;
       form.submit();
-      setStatus('Menghantar ke Google Drive…', true);
 
-      // Fallback jika response sangat lambat (20s)
+      // Fallback jika response sangat lambat (25s)
       setTimeout(() => {
         if (inFlight) {
+          hideLoading();
           showPopup('Proses masih berjalan. Sila semak folder Google Drive sebentar lagi.');
           inFlight = false;
           submitBtn.disabled = false;
         }
-      }, 20000);
+      }, 25000);
 
     } catch (err){
       console.error(err);
+      hideLoading();
       setStatus('Ralat ketika gabung/hantar: ' + err, false);
       submitBtn.disabled = false;
     }
