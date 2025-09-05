@@ -23,7 +23,7 @@
     button[type="submit"]{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     .status{margin-top:10px}
 
-    /* Modal & Loading (sama gaya seperti versi terdahulu) */
+    /* Modal & Loading */
     .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
     .backdrop.show{display:flex}
     .modal{width:min(92%,520px);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.94);opacity:0;animation:pop .18s ease-out forwards}
@@ -99,7 +99,7 @@
       <input type="hidden" name="token" id="tokenHidden" />
     </form>
 
-    <!-- Iframe sasaran (elak buka tab baharu). Guna event load untuk detect siap. -->
+    <!-- Iframe target (elak buka tab baru) -->
     <iframe id="hiddenUpload" name="hiddenUpload" style="display:none"></iframe>
   </div>
 
