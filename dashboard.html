@@ -14,6 +14,26 @@
     .tile{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;text-decoration:none;color:#e9eeff;display:block}
     .tile:hover{border-color:#4da3ff}
     button{padding:10px 14px;border-radius:12px;border:0;background:#4da3ff;color:#001333;font-weight:700;cursor:pointer}
+
+    /* Modal styles */
+    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+    .backdrop.show{display:flex}
+    .modal{width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.96);opacity:0;animation:pop .18s ease-out forwards}
+    @keyframes pop{to{transform:scale(1);opacity:1}}
+    .modal h3{margin:.2rem 0 .6rem;font-size:20px}
+    label{display:block;margin:.6rem 0 .3rem;font-weight:600}
+    input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    .row{display:grid;gap:10px}
+    .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+    .muted{color:#b8c7ff;font-size:13px}
+    .status{margin-top:8px;font-size:14px}
+    .status.ok{color:#34d399}
+    .status.err{color:#ef4444}
+
+    /* Small loading inline */
+    .spinner{width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#4da3ff;animation:spin 1s linear infinite;display:none}
+    .spinner.show{display:inline-block;margin-left:8px;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
@@ -36,15 +56,106 @@
       <a class="tile" href="uploader.html">📄 Upload & Merge PO/PR</a>
       <a class="tile" href="#" onclick="alert('Coming soon')">📦 Inventory (coming soon)</a>
       <a class="tile" href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
+      <a class="tile" href="#" id="openPwd">🔒 Tukar Kata Laluan</a>
     </div>
   </main>
 
+  <!-- Modal Tukar Kata Laluan -->
+  <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title">
+    <div class="modal">
+      <h3 id="pwd-title">Tukar Kata Laluan</h3>
+      <p class="muted">Pastikan kata laluan baharu minimum 8 aksara.</p>
+      <div class="row">
+        <label for="currPwd">Kata Laluan Semasa</label>
+        <input id="currPwd" type="password" autocomplete="current-password" />
+        <label for="newPwd">Kata Laluan Baharu</label>
+        <input id="newPwd" type="password" autocomplete="new-password" minlength="8" />
+        <label for="newPwd2">Sahkan Kata Laluan Baharu</label>
+        <input id="newPwd2" type="password" autocomplete="new-password" minlength="8" />
+      </div>
+      <div id="pwdStatus" class="status"></div>
+      <div class="actions">
+        <button type="button" id="pwdCancel">Batal</button>
+        <button type="button" id="pwdSave">Simpan</button>
+        <span id="pwdSpin" class="spinner" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
   <script src="auth.js"></script>
   <script>
+    // Pastikan user authenticated + greeting
     WFH.ensureAuth((res)=>{
       const name = localStorage.getItem('wfh_name') || res.email || 'User';
       document.getElementById('welcome').textContent = 'Hai, ' + name;
     });
+
+    // Elemen
+    const openBtn = document.getElementById('openPwd');
+    const bd = document.getElementById('pwdBackdrop');
+    const cancelBtn = document.getElementById('pwdCancel');
+    const saveBtn = document.getElementById('pwdSave');
+    const st = document.getElementById('pwdStatus');
+    const spin = document.getElementById('pwdSpin');
+
+    const curr = document.getElementById('currPwd');
+    const np = document.getElementById('newPwd');
+    const np2 = document.getElementById('newPwd2');
+
+    function openModal(){
+      st.textContent=''; st.className='status';
+      curr.value=''; np.value=''; np2.value='';
+      bd.classList.add('show');
+      setTimeout(()=>curr.focus(), 50);
+    }
+    function closeModal(){ bd.classList.remove('show'); }
+
+    openBtn.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
+    bd.addEventListener('click', (e)=>{ if (e.target===bd) closeModal(); });
+    window.addEventListener('keydown', (e)=>{ if (e.key==='Escape' && bd.classList.contains('show')) closeModal(); });
+
+    async function handleSave(){
+      st.textContent=''; st.className='status';
+      const oldPw = curr.value.trim();
+      const newPw = np.value.trim();
+      const newPw2 = np2.value.trim();
+
+      if (!oldPw || !newPw || !newPw2){
+        st.textContent='Lengkapkan semua medan.'; st.className='status err'; return;
+      }
+      if (newPw.length < 8){
+        st.textContent='Kata laluan baharu mesti ≥ 8 aksara.'; st.className='status err'; return;
+      }
+      if (newPw !== newPw2){
+        st.textContent='Pengesahan tidak sepadan.'; st.className='status err'; return;
+      }
+
+      saveBtn.disabled = true; spin.classList.add('show');
+
+      // Panggil Apps Script melalui auth.js helper
+      WFH.changePassword(oldPw, newPw, (res)=>{
+        saveBtn.disabled = false; spin.classList.remove('show');
+        // Respons berjaya (postMessage) – jangkaan { ok:true, kind:'changePassword' }
+        if (res && res.ok){
+          st.textContent='Kata laluan berjaya ditukar. Sila guna kata laluan baharu untuk login selepas ini.'; 
+          st.className='status ok';
+          setTimeout(closeModal, 1200);
+        } else if (res && (res.message === 'KATA LALUAN SALAH' || res.message === 'AKAUN TIADA')){
+          st.textContent = (res.message === 'KATA LALUAN SALAH') ? 'Kata laluan semasa salah.' : 'Akaun tidak ditemui.';
+          st.className='status err';
+        } else if (res && res.message === 'NO_MESSAGE'){
+          // fallback scenario: jika Apps Script guna redirect & tak hantar postMessage
+          st.textContent='Permintaan dihantar. Jika tiada respons, cuba semula.';
+          st.className='status';
+        } else {
+          st.textContent='Gagal menukar kata laluan. Cuba lagi.';
+          st.className='status err';
+        }
+      });
+    }
+
+    saveBtn.addEventListener('click', handleSave);
   </script>
 </body>
 </html>
