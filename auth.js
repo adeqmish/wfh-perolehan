@@ -1,7 +1,7 @@
 // ====== CONFIG ======
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec';
 
-// ====== Helpers ======
+// ====== Helpers (session) ======
 function saveSession(token, name, email){
   localStorage.setItem('wfh_token', token);
   if (name)  localStorage.setItem('wfh_name', name);
@@ -10,6 +10,7 @@ function saveSession(token, name, email){
 function getToken(){ return localStorage.getItem('wfh_token'); }
 function clearSession(){ localStorage.removeItem('wfh_token'); localStorage.removeItem('wfh_name'); localStorage.removeItem('wfh_email'); }
 
+// ====== Helpers (network via hidden iframe) ======
 function postViaIframe(action, fields = {}, cb){
   const iframeName = 'authFrame';
   let ifr = document.getElementById(iframeName);
@@ -40,18 +41,50 @@ function postViaIframe(action, fields = {}, cb){
   window.addEventListener('message', onMsg);
 
   document.body.appendChild(f); f.submit(); setTimeout(()=>f.remove(), 0);
-  // Fallback: jika tiada mesej
+  // Fallback: jika tiada mesej (contoh: redirect fallback digunakan)
   setTimeout(()=>{ if (!handled && cb) cb({ok:false, message:'NO_MESSAGE'}); }, 8000);
+}
+
+// ====== UI helpers (login page) ======
+function setLoginStatus(msg, ok){
+  const el = document.getElementById('loginStatus');
+  if (el){
+    el.textContent = msg || '';
+    el.className = 'status ' + (ok ? 'ok' : 'err');
+  }
+}
+function showLoginLoading(msg){
+  const overlay = document.getElementById('loginLoading');
+  const m = document.getElementById('loginLoadingMsg');
+  if (m && msg) m.textContent = msg;
+  if (overlay) overlay.classList.add('show');
+}
+function setLoginLoadingMessage(msg){
+  const m = document.getElementById('loginLoadingMsg');
+  if (m && msg) m.textContent = msg;
+}
+function hideLoginLoading(){
+  const overlay = document.getElementById('loginLoading');
+  if (overlay) overlay.classList.remove('show');
 }
 
 // ====== Pages ======
 function initLogin(){
   const form = document.getElementById('loginForm');
+  if (!form) return;
   form.addEventListener('submit', (e)=>{
     e.preventDefault();
+    setLoginStatus('', true);
+
     const email = form.email.value.trim();
     const password = form.password.value.trim(); // penting: trim
-    if (!email || !password) return alert('Isi emel & kata laluan');
+    if (!email || !password){
+      setLoginStatus('Isi emel & kata laluan.', false);
+      return;
+    }
+
+    // Tunjuk loading
+    showLoginLoading('Mengesahkan akaun…');
 
     // URL halaman login semasa (untuk fallback redirect)
     const base = location.origin + location.pathname.replace(/[^/]+$/, '');
@@ -61,11 +94,20 @@ function initLogin(){
       if (res && res.ok && res.kind==='login'){
         // postMessage berjaya
         saveSession(res.token, res.name, res.email);
+        hideLoginLoading();
         location.href = 'dashboard.html';
+      } else if (res && (res.message === 'KATA LALUAN SALAH' || res.message === 'AKAUN TIADA')) {
+        // Gagal auth sebenar
+        hideLoginLoading();
+        setLoginStatus(res.message === 'KATA LALUAN SALAH' ? 'Kata laluan salah.' : 'Akaun tidak ditemui.', false);
+      } else if (res && res.message === 'NO_MESSAGE') {
+        // Kemungkinan fallback redirect sedang berlaku
+        setLoginLoadingMessage('Mengalihkan…');
+        // Biarkan overlay terpapar sehingga halaman redirect sendiri
       } else {
-        // Jika postMessage tersekat, Apps Script akan redirect dengan hash token.
-        // Kita tunjuk mesej ringan; page akan berubah sendiri jika fallback berjalan.
-        alert('Login status: ' + (res && res.message ? res.message : 'Sila tunggu atau cuba lagi.'));
+        // Ralat umum
+        hideLoginLoading();
+        setLoginStatus('Login gagal. Cuba lagi.', false);
       }
     });
   });
@@ -73,11 +115,12 @@ function initLogin(){
 
 function initForgot(){
   const form = document.getElementById('forgotForm');
+  if (!form) return;
   form.addEventListener('submit', (e)=>{
     e.preventDefault();
     const email = form.email.value.trim();
-    if (!email) return alert('Isi emel');
-    postViaIframe('forgot', {email}, (res)=>{
+    if (!email) { alert('Isi emel'); return; }
+    postViaIframe('forgot', {email}, ()=>{
       alert('Jika emel wujud, kata laluan baharu telah dihantar.');
       location.href = 'login.html';
     });
