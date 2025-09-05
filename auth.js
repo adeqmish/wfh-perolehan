@@ -50,7 +50,7 @@ function initLogin(){
   form.addEventListener('submit', (e)=>{
     e.preventDefault();
     const email = form.email.value.trim();
-    const password = form.password.value;
+    const password = form.password.value.trim(); // penting: trim
     if (!email || !password) return alert('Isi emel & kata laluan');
 
     // URL halaman login semasa (untuk fallback redirect)
@@ -59,9 +59,12 @@ function initLogin(){
 
     postViaIframe('login', {email, password, returnTo}, (res)=>{
       if (res && res.ok && res.kind==='login'){
+        // postMessage berjaya
         saveSession(res.token, res.name, res.email);
         location.href = 'dashboard.html';
       } else {
+        // Jika postMessage tersekat, Apps Script akan redirect dengan hash token.
+        // Kita tunjuk mesej ringan; page akan berubah sendiri jika fallback berjalan.
         alert('Login status: ' + (res && res.message ? res.message : 'Sila tunggu atau cuba lagi.'));
       }
     });
