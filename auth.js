@@ -8,7 +8,11 @@ function saveSession(token, name, email){
   if (email) localStorage.setItem('wfh_email', email);
 }
 function getToken(){ return localStorage.getItem('wfh_token'); }
-function clearSession(){ localStorage.removeItem('wfh_token'); localStorage.removeItem('wfh_name'); localStorage.removeItem('wfh_email'); }
+function clearSession(){
+  localStorage.removeItem('wfh_token');
+  localStorage.removeItem('wfh_name');
+  localStorage.removeItem('wfh_email');
+}
 
 // ====== Helpers (network via hidden iframe) ======
 function postViaIframe(action, fields = {}, cb){
@@ -30,9 +34,11 @@ function postViaIframe(action, fields = {}, cb){
 
   let handled = false;
   const onMsg = (ev)=>{
-    let data = ev.data; if (typeof data === 'string'){ try{ data = JSON.parse(data); }catch(_){} }
+    let data = ev.data;
+    if (typeof data === 'string'){ try{ data = JSON.parse(data); }catch(_){} }
     if (!data || typeof data !== 'object') return;
     const src = data.source;
+    // Terima mesej dari Apps Script kita sahaja
     if (src !== 'auth' && src !== 'po-pr-uploader') return;
     handled = true;
     window.removeEventListener('message', onMsg);
@@ -40,8 +46,11 @@ function postViaIframe(action, fields = {}, cb){
   };
   window.addEventListener('message', onMsg);
 
-  document.body.appendChild(f); f.submit(); setTimeout(()=>f.remove(), 0);
-  // Fallback: jika tiada mesej (contoh: redirect fallback digunakan)
+  document.body.appendChild(f);
+  f.submit();
+  setTimeout(()=>f.remove(), 0);
+
+  // Fallback: jika tiada postMessage diterima (contoh: backend buat redirect)
   setTimeout(()=>{ if (!handled && cb) cb({ok:false, message:'NO_MESSAGE'}); }, 8000);
 }
 
@@ -144,5 +153,31 @@ function logout(){
   postViaIframe('logout', {token:t}, ()=>{ clearSession(); location.href = 'login.html'; });
 }
 
-// Expose globally
-window.WFH = { initLogin, initForgot, ensureAuth, logout, getToken };
+// ====== Password Change (for dashboard modal) ======
+function changePassword(oldPassword, newPassword, cb){
+  const token = getToken();
+  if (!token){ location.href = 'login.html'; return; }
+  // Validasi minimum di client (server masih WAJIB semak)
+  if (!oldPassword || !newPassword){
+    if (cb) cb({ok:false, message:'MEDAN_TAK_LENGKAP'});
+    return;
+  }
+  postViaIframe('changePassword', { token, oldPassword, newPassword }, (res)=>{
+    // Jangkaan respons:
+    //  - { ok:true, kind:'changePassword' }
+    //  - { ok:false, message:'KATA LALUAN SALAH' }
+    //  - { ok:false, message:'AKAUN TIADA' }
+    //  - { ok:false, message:'NO_MESSAGE' } (fallback timeout)
+    if (cb) cb(res);
+  });
+}
+
+// ====== Expose globally ======
+window.WFH = {
+  initLogin,
+  initForgot,
+  ensureAuth,
+  logout,
+  getToken,
+  changePassword
+};
