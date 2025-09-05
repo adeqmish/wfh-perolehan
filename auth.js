@@ -66,6 +66,8 @@ function setLoginLoadingMessage(msg){
 function hideLoginLoading(){
   const overlay = document.getElementById('loginLoading');
   if (overlay) overlay.classList.remove('show');
+  const btn = document.getElementById('loginBtn');
+  if (btn) btn.disabled = false;
 }
 
 // ====== Pages ======
@@ -80,10 +82,11 @@ function initLogin(){
     const password = form.password.value.trim(); // penting: trim
     if (!email || !password){
       setLoginStatus('Isi emel & kata laluan.', false);
+      hideLoginLoading();
       return;
     }
 
-    // Tunjuk loading
+    // Pastikan overlay kekal (fallback inline handler dalam HTML sudah memaparkan overlay)
     showLoginLoading('Mengesahkan akaun…');
 
     // URL halaman login semasa (untuk fallback redirect)
