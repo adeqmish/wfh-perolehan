@@ -33,6 +33,25 @@ a{color:#9fb0ff;text-decoration:none}
 <a href="forgot.html">Lupa kata laluan?</a>
 </div>
 </div>
+  <script>
+  // Auto-complete login jika datang dengan hash (#t=...&n=...&e=...)
+  (function () {
+    var hash = location.hash ? location.hash.slice(1) : '';
+    if (!hash) return;
+    var p = new URLSearchParams(hash);
+    var t = p.get('t'), n = p.get('n'), e = p.get('e');
+    if (t) {
+      try {
+        localStorage.setItem('wfh_token', t);
+        if (n) localStorage.setItem('wfh_name', decodeURIComponent(n));
+        if (e) localStorage.setItem('wfh_email', decodeURIComponent(e));
+      } catch (_) {}
+      // Bersihkan hash & terus ke dashboard
+      location.replace('dashboard.html');
+    }
+  })();
+</script>
+
 <script src="auth.js"></script>
 <script>WFH.initLogin();</script>
 </body>
