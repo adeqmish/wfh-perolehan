@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Upload & Merge PO/PR – WFH</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+:root{--bg:#0b1020;--card:#121a33;--muted:#9fb0ff;--accent:#4da3ff;--ok:#34d399;--err:#ef4444}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);color:#e9eeff;min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:40px;height:40px}
+.nav a, .nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:#4da3ff;color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+.wrap{max-width:880px;margin:20px auto;padding:16px}
+.card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:20px}
+label{display:block;margin:12px 0 6px;font-weight:600}
+input[type="text"],input[type="date"],input[type="file"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+small{color:#b8c7ff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row{display:grid;gap:10px}
+.actions{display:flex;gap:12px;align-items:center;margin-top:18px}
+button[type="submit"]{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+.status{margin-top:10px}
+
+
+/* Modal & Loading (sama gaya seperti versi terdahulu) */
+.backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+.backdrop.show{display:flex}
+.modal{width:min(92%,520px);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.94);opacity:0;animation:pop .18s ease-out forwards}
+@keyframes pop{to{transform:scale(1);opacity:1}}
+.modal h3{margin:.2rem 0 .4rem;font-size:18px}
+.modal p{margin:.3rem 0;color:#cfd8ff}
+.modal .icon{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#0e1a3a;border:1px solid rgba(255,255,255,.08);margin:0 auto 10px;font-size:26px}
+.modal .actions{display:flex;justify-content:center;margin-top:14px}
+.modal .btn{padding:10px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+.loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:70}
+.loading.show{display:flex}
+.loading-box{width:min(92%,420px);text-align:center;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px 22px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
+.spinner{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;border:6px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/UNISEL_logo.svg/320px-UNISEL_logo.svg.png" alt="UNISEL"/>
+<div>
+<div style="font-weight:700">WFH – Upload & Merge PO/PR</div>
+<small id="welcome"></small>
+</div>
+</div>
+<div class="nav">
+<a href="dashboard.html">Home</a>
+<button onclick="WFH.logout()">Logout</button>
+</div>
+</header>
+
+
+<div class="wrap">
+<form id="uform" class="card" autocomplete="off">
+<div class="grid">
+<div class="row">
+<label for="po">(PO) Purchase Order No</label>
+<input id="po" name="po" type="text" placeholder="cth: 01-PO202500362" required />
+</div>
+<div class="row">
+<label for="pr">(PR) Purchase Requisition No</label>
+<input id="pr" name="pr" type="text" placeholder="cth: 02-PR202500228" required />
+</div>
+</div>
+
+
+<div class="grid">
+<div class="row">
+<label for="poFile">Upload PO (PDF)</label>
+</html>
