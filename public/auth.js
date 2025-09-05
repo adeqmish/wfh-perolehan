@@ -1,4 +1,22 @@
 // ====== CONFIG ======
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbwqKBcDLZ5s_Om5OHxNr0Lmt15dcVUz99YVXgDCGgaR7d8A8AEbpzD2va7ztaMPAIFV/exec'; // contoh: https://script.google.com/macros/s/XXXX/exec
+
+
+// ====== Helpers ======
+function saveSession(token, name, email){
+localStorage.setItem('wfh_token', token);
+if (name) localStorage.setItem('wfh_name', name);
+if (email) localStorage.setItem('wfh_email', email);
+}
+function getToken(){ return localStorage.getItem('wfh_token'); }
+function clearSession(){ localStorage.removeItem('wfh_token'); localStorage.removeItem('wfh_name'); localStorage.removeItem('wfh_email'); }
+
+
+function postViaIframe(action, fields = {}, cb){
+const iframeName = 'authFrame';
+let ifr = document.getElementById(iframeName);
+if (!ifr){
+ifr = document.createElement('iframe');
 ifr.style.display = 'none';
 ifr.name = iframeName; ifr.id = iframeName;
 document.body.appendChild(ifr);
@@ -49,37 +67,4 @@ alert('Login gagal: ' + (res && res.message ? res.message : 'Ralat'));
 });
 });
 }
-
-
-function initForgot(){
-const form = document.getElementById('forgotForm');
-form.addEventListener('submit', (e)=>{
-e.preventDefault();
-const email = form.email.value.trim();
-if (!email) return alert('Isi emel');
-postViaIframe('forgot', {email}, (res)=>{
-alert('Jika emel wujud, kata laluan baharu telah dihantar.');
-location.href = 'login.html';
-});
-});
-}
-
-
-function ensureAuth(cb){
-const t = getToken();
-if (!t) { location.href = 'login.html'; return; }
-postViaIframe('verify', {token:t}, (res)=>{
-if (res && res.ok) { if (cb) cb(res); }
-else { clearSession(); location.href = 'login.html'; }
-});
-}
-
-
-function logout(){
-const t = getToken();
-postViaIframe('logout', {token:t}, ()=>{ clearSession(); location.href = 'login.html'; });
-}
-
-
-// Expose globally
 window.WFH = { initLogin, initForgot, ensureAuth, logout, getToken };
