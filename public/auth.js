@@ -1,5 +1,5 @@
 // ====== CONFIG ======
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbwqKBcDLZ5s_Om5OHxNr0Lmt15dcVUz99YVXgDCGgaR7d8A8AEbpzD2va7ztaMPAIFV/exec'; // contoh: https://script.google.com/macros/s/XXXX/exec
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec'; // contoh: https://script.google.com/macros/s/XXXX/exec
 
 
 // ====== Helpers ======
