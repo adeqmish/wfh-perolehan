@@ -51,20 +51,29 @@ setTimeout(()=>{ if (!handled && cb) cb({ok:false, message:'NO_MESSAGE'}); }, 80
 
 // ====== Pages ======
 function initLogin(){
-const form = document.getElementById('loginForm');
-form.addEventListener('submit', (e)=>{
-e.preventDefault();
-const email = form.email.value.trim();
-const password = form.password.value;
-if (!email || !password) return alert('Isi emel & kata laluan');
-postViaIframe('login', {email, password}, (res)=>{
-if (res && res.ok && res.kind==='login'){
-saveSession(res.token, res.name, res.email);
-location.href = 'dashboard.html';
-} else {
-alert('Login gagal: ' + (res && res.message ? res.message : 'Ralat'));
+  const form = document.getElementById('loginForm');
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const email = form.email.value.trim();
+    const password = form.password.value;
+    if (!email || !password) return alert('Isi emel & kata laluan');
+
+    // URL halaman login semasa (sebagai landing untuk fallback redirect)
+    const base = location.origin + location.pathname.replace(/[^/]+$/, ''); // folder semasa
+    const returnTo = base + 'login.html';
+
+    postViaIframe('login', {email, password, returnTo}, (res)=>{
+      if (res && res.ok && res.kind==='login'){
+        // Jika postMessage berjaya, teruskan macam biasa:
+        saveSession(res.token, res.name, res.email);
+        location.href = 'dashboard.html';
+      } else {
+        // Kalau tiada message (NO_MESSAGE) pun, fallback redirect dari Apps Script akan jalan
+        // Jadi kita bagi mesej je; kalau benar-benar gagal, user akan kekal di page ini
+        alert('Login status: ' + (res && res.message ? res.message : 'Sila tunggu atau cuba lagi.'));
+      }
+    });
+  });
 }
-});
-});
-}
+
 window.WFH = { initLogin, initForgot, ensureAuth, logout, getToken };
