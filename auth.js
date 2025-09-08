@@ -172,12 +172,46 @@ function changePassword(oldPassword, newPassword, cb){
   });
 }
 
+// ====== Admin helpers & user management (client) ======
+const ADMIN_EMAIL = 'missyahrul@unisel.edu.my';
+
+function isAdminEmail(email){
+  return String(email || localStorage.getItem('wfh_email') || '').toLowerCase() === ADMIN_EMAIL;
+}
+
+function ensureAdminOrBack(backUrl){
+  const e = localStorage.getItem('wfh_email') || '';
+  if (!isAdminEmail(e)) { location.href = backUrl || 'dashboard.html'; }
+}
+
+function listUsers(cb){
+  const token = getToken();
+  postViaIframe('listUsers', { token }, (res)=>{ if (cb) cb(res); });
+}
+
+function addUser(email, cb){
+  const token = getToken();
+  postViaIframe('addUser', { token, email }, (res)=>{ if (cb) cb(res); });
+}
+
+function deleteUser(email, cb){
+  const token = getToken();
+  postViaIframe('deleteUser', { token, email }, (res)=>{ if (cb) cb(res); });
+}
+
 // ====== Expose globally ======
 window.WFH = {
+  // umum
   initLogin,
   initForgot,
   ensureAuth,
   logout,
   getToken,
-  changePassword
+  changePassword,
+  // admin
+  isAdminEmail,
+  ensureAdminOrBack,
+  listUsers,
+  addUser,
+  deleteUser
 };
