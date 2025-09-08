@@ -16,6 +16,12 @@
     .tile:hover{border-color:#4da3ff}
     button{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     .hidden{display:none}
+
+    /* Animations & fallback */
+    @keyframes pop { to{transform:scale(1);opacity:1;} }
+    @keyframes spin { to{transform:rotate(360deg);} }
+    .backdrop.show{display:flex !important;}
+    .backdrop .modal.show{opacity:1 !important;transform:scale(1) !important;}
   </style>
 </head>
 <body>
@@ -46,7 +52,7 @@
     </div>
   </main>
 
-  <!-- Modal Tukar Kata Laluan (sama seperti versi sedia ada) -->
+  <!-- Modal Tukar Kata Laluan -->
   <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60">
     <div class="modal" style="width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.96);opacity:0;animation:pop .18s ease-out forwards">
       <h3 id="pwd-title" style="margin:.2rem 0 .6rem;font-size:20px">Tukar Kata Laluan</h3>
@@ -68,7 +74,8 @@
     </div>
   </div>
 
-  <script src="auth.js?v=dashboard-addacc"></script>
+  <!-- cache-buster untuk elak cache lama -->
+  <script src="auth.js?v=2025-09-08b"></script>
   <script>
     // Auth + greet + paparkan tile admin kalau email admin
     WFH.ensureAuth((res)=>{
@@ -78,7 +85,7 @@
       if (WFH.isAdminEmail(email)) document.getElementById('tileAddAcc').classList.remove('hidden');
     });
 
-    // Modal tukar password (guna helper sedia ada)
+    // Modal tukar password
     const bd = document.getElementById('pwdBackdrop');
     const openBtn = document.getElementById('openPwd');
     const cancelBtn = document.getElementById('pwdCancel');
@@ -89,13 +96,37 @@
     const np = document.getElementById('newPwd');
     const np2 = document.getElementById('newPwd2');
 
-    function openModal(){ st.textContent=''; curr.value=''; np.value=''; np2.value=''; bd.style.display='flex'; setTimeout(()=>curr.focus(),50); }
-    function closeModal(){ bd.style.display='none'; }
-    openBtn.addEventListener('click', openModal); cancelBtn.addEventListener('click', closeModal);
+    function openModal(){
+      st.textContent=''; curr.value=''; np.value=''; np2.value='';
+      bd.style.display='flex';
+      const modal = bd.querySelector('.modal');
+      if (modal){
+        modal.classList.add('show');
+        modal.style.opacity='1';
+        modal.style.transform='scale(1)';
+      }
+      setTimeout(()=>curr.focus(),50);
+    }
+    function closeModal(){
+      const modal = bd.querySelector('.modal');
+      if (modal) modal.classList.remove('show');
+      bd.style.display='none';
+    }
+
+    openBtn.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
     bd.addEventListener('click', (e)=>{ if(e.target===bd) closeModal(); });
     window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && bd.style.display==='flex') closeModal(); });
 
-    const msgMap = {'KATA LALUAN SALAH':'Kata laluan semasa salah.','AKAUN TIADA':'Akaun tidak ditemui.','LEMAH_MIN8':'Kata laluan baharu mesti ≥ 8 aksara.','MEDAN_TAK_LENGKAP':'Lengkapkan semua medan.','NOT_AUTH':'Sesi tamat. Sila login semula.','UNKNOWN_ACTION':'Server belum dikemas kini.','NO_MESSAGE':'Permintaan dihantar. Jika tiada respons, cuba semula.'};
+    const msgMap = {
+      'KATA LALUAN SALAH':'Kata laluan semasa salah.',
+      'AKAUN TIADA':'Akaun tidak ditemui.',
+      'LEMAH_MIN8':'Kata laluan baharu mesti ≥ 8 aksara.',
+      'MEDAN_TAK_LENGKAP':'Lengkapkan semua medan.',
+      'NOT_AUTH':'Sesi tamat. Sila login semula.',
+      'UNKNOWN_ACTION':'Server belum dikemas kini.',
+      'NO_MESSAGE':'Permintaan dihantar. Jika tiada respons, cuba semula.'
+    };
 
     document.getElementById('pwdSave').addEventListener('click', ()=>{
       st.textContent=''; 
@@ -107,7 +138,11 @@
       WFH.changePassword(oldPw, newPw, (res)=>{
         saveBtn.disabled=false; spin.style.display='none';
         if (res && res.ok){ st.textContent='Kata laluan berjaya ditukar.'; st.style.color='var(--ok)'; setTimeout(closeModal,1200); }
-        else { const m = (res && msgMap[res.message]) || 'Gagal menukar kata laluan.'; st.textContent = m; st.style.color='var(--err)'; if(res && res.message==='NOT_AUTH') setTimeout(()=>location.href='login.html',800); }
+        else {
+          const m = (res && msgMap[res.message]) || 'Gagal menukar kata laluan.';
+          st.textContent = m; st.style.color='var(--err)';
+          if(res && res.message==='NOT_AUTH') setTimeout(()=>location.href='login.html',800);
+        }
       });
     });
   </script>
