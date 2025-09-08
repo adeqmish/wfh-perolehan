@@ -162,7 +162,8 @@ function changePassword(oldPassword, newPassword, cb){
     if (cb) cb({ok:false, message:'MEDAN_TAK_LENGKAP'});
     return;
   }
-  postViaIframe('changePassword', { token, oldPassword, newPassword }, (res)=>{
+  // FIX: action name mesti ikut backend (all lowercase)
+  postViaIframe('changepassword', { token, oldPassword, newPassword }, (res)=>{
     // Jangkaan respons:
     //  - { ok:true, kind:'changePassword' }
     //  - { ok:false, message:'KATA LALUAN SALAH' }
@@ -186,17 +187,20 @@ function ensureAdminOrBack(backUrl){
 
 function listUsers(cb){
   const token = getToken();
-  postViaIframe('listUsers', { token }, (res)=>{ if (cb) cb(res); });
+  // FIX: action name ikut backend (lowercase)
+  postViaIframe('listusers', { token }, (res)=>{ if (cb) cb(res); });
 }
 
 function addUser(email, cb){
   const token = getToken();
-  postViaIframe('addUser', { token, email }, (res)=>{ if (cb) cb(res); });
+  // FIX: action name ikut backend (lowercase)
+  postViaIframe('adduser', { token, email }, (res)=>{ if (cb) cb(res); });
 }
 
 function deleteUser(email, cb){
   const token = getToken();
-  postViaIframe('deleteUser', { token, email }, (res)=>{ if (cb) cb(res); });
+  // FIX: action name ikut backend (lowercase)
+  postViaIframe('deleteuser', { token, email }, (res)=>{ if (cb) cb(res); });
 }
 
 // ====== Expose globally ======
