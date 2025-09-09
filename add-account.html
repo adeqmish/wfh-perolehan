@@ -18,16 +18,29 @@
     label{display:block;margin:.6rem 0 .3rem;font-weight:600}
     input[type="email"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
     .row{display:grid;gap:10px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    fieldset{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
+    legend{padding:0 8px;color:#cfd8ff}
+    .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+    .check{display:flex;gap:8px;align-items:center}
     .actions{display:flex;gap:10px;align-items:center;margin-top:12px}
     .btn{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+    .muted{color:#b8c7ff;font-size:13px}
     .status{margin-top:8px;font-size:14px}
     .status.ok{color:var(--ok)}
     .status.err{color:var(--err)}
     table{width:100%;border-collapse:collapse;margin-top:14px}
     th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
-    .xbtn{padding:6px 10px;border-radius:10px;border:0;background:#2a1320;color:#ffd1d9;cursor:pointer}
-    .muted{color:#b8c7ff;font-size:13px}
+    .btn-sm{padding:6px 10px;border-radius:10px;border:0;background:#243055;color:#dbe6ff;cursor:pointer}
+    .btn-del{background:#2a1320;color:#ffd1d9}
     .hidden{display:none}
+
+    /* Modal */
+    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+    .backdrop.show{display:flex}
+    .modal{width:min(92%,520px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px}
+    .modal h3{margin:.2rem 0 .6rem;font-size:20px}
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
   </style>
 </head>
 <body>
@@ -48,11 +61,26 @@
 <div class="wrap">
   <div class="card">
     <h2>Tambah Akses Login</h2>
-    <p class="muted">Masukkan emel staf/pengguna. Sistem akan cipta kata laluan rawak dan hantar emel akses.</p>
-    <div class="row">
-      <label for="accEmail">Emel Pengguna</label>
-      <input id="accEmail" type="email" placeholder="cth: nama@unisel.edu.my" required>
+    <p class="muted">Masukkan emel staf/pengguna, pilih akses laman, kemudian hantar jemputan.</p>
+
+    <div class="grid">
+      <div class="row">
+        <label for="accEmail">Emel Pengguna</label>
+        <input id="accEmail" type="email" placeholder="cth: nama@unisel.edu.my" required>
+      </div>
+
+      <fieldset>
+        <legend>Akses Laman</legend>
+        <div class="checks" id="newAccessChecks">
+          <label class="check"><input type="checkbox" value="uploader" checked> Upload & Merge PO/PR</label>
+          <label class="check"><input type="checkbox" value="combine" checked> Combine File (PDF)</label>
+          <label class="check"><input type="checkbox" value="inventory"> Inventory</label>
+          <label class="check"><input type="checkbox" value="reports"> Reports</label>
+        </div>
+        <small class="muted">Nota: “Add Account” hanya untuk admin akaun.</small>
+      </fieldset>
     </div>
+
     <div class="actions">
       <button id="btnAdd" class="btn">Hantar Jemputan</button>
       <span id="stat" class="status"></span>
@@ -62,10 +90,40 @@
 
     <h3>Senarai Akaun Aktif</h3>
     <table id="tbl">
-      <thead><tr><th style="width:42%">Emel</th><th>Nama</th><th>Tarikh Buat</th><th style="width:1%"></th></tr></thead>
-      <tbody id="tbody"><tr><td colspan="4" class="muted">Memuatkan…</td></tr></tbody>
+      <thead>
+      <tr>
+        <th style="width:30%">Emel</th>
+        <th>Nama</th>
+        <th>Akses</th>
+        <th>Tarikh Buat</th>
+        <th style="width:1%"></th>
+      </tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="5" class="muted">Memuatkan…</td></tr></tbody>
     </table>
     <p class="muted">Padam akaun akan membuang akses login serta-merta (sesi aktif juga ditamatkan).</p>
+  </div>
+</div>
+
+<!-- Modal Edit Akses -->
+<div id="accBackdrop" class="backdrop" aria-modal="true" role="dialog" aria-labelledby="accTitle">
+  <div class="modal">
+    <h3 id="accTitle">Edit Akses</h3>
+    <p id="accEmailView" class="muted" style="margin-top:-6px"></p>
+    <fieldset>
+      <legend>Akses Laman</legend>
+      <div class="checks" id="editAccessChecks">
+        <label class="check"><input type="checkbox" value="uploader"> Upload & Merge PO/PR</label>
+        <label class="check"><input type="checkbox" value="combine"> Combine File (PDF)</label>
+        <label class="check"><input type="checkbox" value="inventory"> Inventory</label>
+        <label class="check"><input type="checkbox" value="reports"> Reports</label>
+      </div>
+      <small class="muted">“Add Account” kekal admin-only.</small>
+    </fieldset>
+    <div class="actions">
+      <button id="accCancel" class="btn-sm">Batal</button>
+      <button id="accSave" class="btn">Simpan</button>
+    </div>
   </div>
 </div>
 
@@ -82,49 +140,93 @@
   const stat = document.getElementById('stat');
   function setStat(msg, ok){ stat.textContent = msg||''; stat.className = 'status ' + (ok?'ok':'err'); }
 
+  function getCheckedValues(containerId){
+    const box = document.getElementById(containerId);
+    return Array.from(box.querySelectorAll('input[type=checkbox]:checked')).map(i=>i.value);
+  }
+
+  document.getElementById('btnAdd').addEventListener('click', ()=>{
+    const email = document.getElementById('accEmail').value.trim().toLowerCase();
+    if (!email){ setStat('Isi emel.', false); return; }
+    const access = getCheckedValues('newAccessChecks');
+    setStat('Menghantar jemputan…', true);
+    WFH.addUser(email, access, (res)=>{
+      if (res && res.ok){
+        setStat('Jemputan dihantar. Kata laluan rawak diemelkan.', true);
+        document.getElementById('accEmail').value = '';
+        loadList();
+      } else {
+        setStat(res && res.message ? res.message : 'Gagal tambah akaun.', false);
+      }
+    });
+  });
+
   async function loadList(){
     setStat('', true);
     WFH.listUsers((res)=>{
       const tb = document.getElementById('tbody');
       tb.innerHTML = '';
       if (!res || !res.ok || !Array.isArray(res.users) || !res.users.length){
-        tb.innerHTML = '<tr><td colspan="4" class="muted">Tiada akaun.</td></tr>'; return;
+        tb.innerHTML = '<tr><td colspan="5" class="muted">Tiada akaun.</td></tr>'; return;
       }
       res.users.forEach(u=>{
         const tr = document.createElement('tr');
         const tdE = document.createElement('td'); tdE.textContent = u.email || '';
         const tdN = document.createElement('td'); tdN.textContent = u.name || '';
+        const tdA = document.createElement('td'); tdA.textContent = (u.access && u.access.length)? u.access.join(', ') : '—';
         const tdC = document.createElement('td'); tdC.textContent = u.createdAt || '';
-        const tdX = document.createElement('td'); 
-        const del = document.createElement('button'); del.className='xbtn'; del.textContent='Padam';
+        const tdX = document.createElement('td');
+
+        const edit = document.createElement('button'); edit.className='btn-sm'; edit.textContent='Edit Akses';
+        edit.onclick = ()=> openEdit(u.email, u.access || []);
+        const del = document.createElement('button'); del.className='btn-sm btn-del'; del.style.marginLeft='6px'; del.textContent='Padam';
         del.onclick = ()=>{ if (confirm('Padam akaun '+(u.email||'')+' ?')) doDelete(u.email); };
-        tdX.appendChild(del);
-        tr.append(tdE, tdN, tdC, tdX);
+
+        tdX.append(edit, del);
+        tr.append(tdE, tdN, tdA, tdC, tdX);
         tb.appendChild(tr);
       });
     });
   }
 
-  document.getElementById('btnAdd').addEventListener('click', ()=>{
-    const e = document.getElementById('accEmail').value.trim().toLowerCase();
-    if (!e){ setStat('Sila masukkan emel.', false); return; }
-    setStat('Memproses…', true);
-    WFH.addUser(e, (res)=>{
-      if (res && res.ok){ setStat('Akaun dicipta & emel akses dihantar.', true); document.getElementById('accEmail').value=''; loadList(); }
-      else {
-        const m = (res && res.message) ? String(res.message) : 'Gagal menambah akaun.';
-        setStat(m, false);
-      }
-    });
-  });
-
   function doDelete(email){
-    setStat('Memadam…', true);
     WFH.deleteUser(email, (res)=>{
-      if (res && res.ok){ setStat('Akaun dipadam.', true); loadList(); }
-      else { setStat((res && res.message)||'Gagal padam akaun.', false); }
+      if (res && res.ok){ loadList(); }
+      else setStat('Gagal padam akaun.', false);
     });
   }
+
+  // Modal Edit
+  const bd = document.getElementById('accBackdrop');
+  const accEmailView = document.getElementById('accEmailView');
+  const accCancel = document.getElementById('accCancel');
+  const accSave = document.getElementById('accSave');
+  let editingEmail = '';
+
+  function setChecks(containerId, selected){
+    const box = document.getElementById(containerId);
+    box.querySelectorAll('input[type=checkbox]').forEach(i=>{
+      i.checked = selected.includes(i.value);
+    });
+  }
+
+  function openEdit(email, access){
+    editingEmail = email;
+    accEmailView.textContent = email;
+    setChecks('editAccessChecks', access || []);
+    bd.classList.add('show');
+  }
+  function closeEdit(){ bd.classList.remove('show'); }
+  accCancel.onclick = closeEdit;
+  bd.addEventListener('click', (e)=>{ if(e.target===bd) closeEdit(); });
+
+  accSave.onclick = ()=>{
+    const access = getCheckedValues('editAccessChecks');
+    WFH.updateAccess(editingEmail, access, (res)=>{
+      if (res && res.ok){ closeEdit(); loadList(); setStat('Akses dikemas kini.', true); }
+      else setStat('Gagal kemas kini akses.', false);
+    });
+  };
 </script>
 </body>
 </html>
