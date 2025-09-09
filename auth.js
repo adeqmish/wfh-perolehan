@@ -1,5 +1,3 @@
-<!-- auth.js (FULL) -->
-<script>
 /* =========================================================
    SETTINGS (ubah ikut projek tuan)
    ========================================================= */
@@ -45,11 +43,10 @@ WFH.isAdminEmail = function(email){
   }
 
   window.postViaIframe = function(action, data, cb){
-    // Listener sekali setiap call (akan remove sendiri)
     function onMsg(ev){
       try{
         const d = ev.data || {};
-        if (d && d.source === 'auth' && d.kind === action || d.kind?.startsWith(action)) {
+        if (d && d.source === 'auth' && (d.kind === action || (d.kind||'').startsWith(action))) {
           window.removeEventListener('message', onMsg);
           cb && cb(d.result || d);
         }
@@ -69,7 +66,6 @@ WFH.isAdminEmail = function(email){
 WFH.ensureAuth = function(onOk){
   const t = WFH.getToken();
   if (!t) { location.href = 'login.html'; return; }
-  // ping ringkas untuk sahkan token
   postViaIframe('ping', { token: t }, function(res){
     if (res && res.ok){
       const email = res.email || localStorage.getItem('wfh_email') || '';
@@ -128,14 +124,12 @@ WFH.initForgot = function(){
   });
 };
 
-/* Tukar kata laluan (dari Dashboard modal) */
 WFH.changePassword = function(curr, next, cb){
   postViaIframe('change_password', { token: WFH.getToken(), curr, next }, function(res){
     cb && cb(res);
   });
 };
 
-/* Dapatkan akses (senarai modul untuk user) */
 WFH.getAccess = function(cb){
   postViaIframe('get_access', { token: WFH.getToken() }, function(res){
     cb && cb(res);
@@ -143,40 +137,47 @@ WFH.getAccess = function(cb){
 };
 
 /* =========================================================
-   MODUL KELULUSAN PEROLEHAN (helper ke Apps Script)
+   USER MANAGEMENT (Add Account page)
+   ========================================================= */
+WFH.addUser = function(email, access, cb){
+  postViaIframe('add_user', { token: WFH.getToken(), email, access: access||[] }, function(res){ cb && cb(res); });
+};
+WFH.listUsers = function(cb){
+  postViaIframe('list_users', { token: WFH.getToken() }, function(res){ cb && cb(res); });
+};
+WFH.updateAccess = function(email, access, cb){
+  postViaIframe('update_access', { token: WFH.getToken(), email, access: access||[] }, function(res){ cb && cb(res); });
+};
+WFH.deleteUser = function(email, cb){
+  postViaIframe('delete_user', { token: WFH.getToken(), email }, function(res){ cb && cb(res); });
+};
+
+/* =========================================================
+   MODUL KELULUSAN PEROLEHAN
    ========================================================= */
 const b64Strip = (s)=> String(s||'').replace(/^data:.*?;base64,/,'');
 
-/** Perolehan submit PO + dokumen */
 WFH.poSubmit = function(poNo, fileBase64, cb){
   postViaIframe('po_submit', { token: WFH.getToken(), poNo, fileBase64: b64Strip(fileBase64) }, function(res){ cb && cb(res); });
 };
-/** Status list (ikut user / admin semua) */
 WFH.poListStatus = function(cb){
   postViaIframe('po_list_status', { token: WFH.getToken() }, function(res){ cb && cb(res); });
 };
-/** Senarai untuk Bendahari */
 WFH.poListBendahari = function(cb){
   postViaIframe('po_list_bendahari', { token: WFH.getToken() }, function(res){ cb && cb(res); });
 };
-/** Bendahari submit */
 WFH.poBendahariSubmit = function(id, fileBase64, cb){
   postViaIframe('po_bendahari_submit', { token: WFH.getToken(), id, fileBase64: b64Strip(fileBase64) }, function(res){ cb && cb(res); });
 };
-/** Senarai untuk NC */
 WFH.poListNC = function(cb){
   postViaIframe('po_list_nc', { token: WFH.getToken() }, function(res){ cb && cb(res); });
 };
-/** NC submit */
 WFH.poNCSubmit = function(id, fileBase64, cb){
   postViaIframe('po_nc_submit', { token: WFH.getToken(), id, fileBase64: b64Strip(fileBase64) }, function(res){ cb && cb(res); });
 };
-/** Perolehan tanda selesai lepas Lulus NC */
 WFH.poComplete = function(id, cb){
   postViaIframe('po_complete', { token: WFH.getToken(), id }, function(res){ cb && cb(res); });
 };
-/** Laporan */
 WFH.poListReport = function(cb){
   postViaIframe('po_list_report', { token: WFH.getToken() }, function(res){ cb && cb(res); });
 };
-</script>
