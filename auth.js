@@ -1,5 +1,5 @@
 // ====== CONFIG ======
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec';
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbwD6rogkEc5Nzqo68owrGtabWch3shncW1tpCMlgH15g8gcGaFUQQmcGQ4OBCNkHqY/exec';
 
 // ====== Helpers (session) ======
 function saveSession(token, name, email){
