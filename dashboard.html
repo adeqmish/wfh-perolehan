@@ -16,17 +16,21 @@
     .tile:hover{border-color:#4da3ff}
     button{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     .hidden{display:none}
-    .status{margin-top:8px;font-size:14px}
-    .status.ok{color:var(--ok)} .status.err{color:var(--err)}
     @keyframes pop { to{transform:scale(1);opacity:1;} }
     @keyframes spin { to{transform:rotate(360deg);} }
-    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
-    .backdrop.show{display:flex}
-    .modal{width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.96);opacity:0;animation:pop .18s ease-out forwards}
-    .spinner{width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#4da3ff;animation:spin 1s linear infinite;display:none}
   </style>
 </head>
 <body>
+  <!-- Host guard: pastikan berada di GitHub Pages repo -->
+  <script>
+    (function(){
+      var BASE = 'https://adeqmish.github.io/wfh-perolehan/';
+      if (!location.href.startsWith(BASE)) {
+        location.replace(BASE + 'dashboard.html');
+      }
+    })();
+  </script>
+
   <header>
     <div class="brand">
       <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL"/>
@@ -43,23 +47,23 @@
   <main class="card">
     <h2>Menu</h2>
     <div class="grid">
-      <a id="tileUploader" class="tile" href="uploader.html">📄 Upload &amp; Merge PO/PR</a>
-      <a id="tileCombine"  class="tile" href="combine.html">🧩 Combine File (PDF)</a>
-      <a id="openPwd"      class="tile" href="#">🔒 Tukar Kata Laluan</a>
+      <a class="tile" href="https://adeqmish.github.io/wfh-perolehan/uploader.html">📄 Upload &amp; Merge PO/PR</a>
+      <a class="tile" href="https://adeqmish.github.io/wfh-perolehan/combine.html">🧩 Combine File (PDF)</a>
+      <a class="tile" href="#" id="openPwd">🔒 Tukar Kata Laluan</a>
       <!-- Admin only -->
-      <a id="tileAddAcc"   class="tile hidden" href="add-account.html">➕ Add Account</a>
-      <!-- Coming soon (juga ikut access) -->
-      <a id="tileInventory" class="tile" href="#" onclick="alert('Coming soon')">📦 Inventory (coming soon)</a>
-      <a id="tileReports"   class="tile" href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
+      <a class="tile hidden" id="tileAddAcc" href="https://adeqmish.github.io/wfh-perolehan/add-account.html">➕ Add Account</a>
+      <!-- Coming soon -->
+      <a class="tile" href="#" onclick="alert('Coming soon')">📦 Inventory (coming soon)</a>
+      <a class="tile" href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
     </div>
   </main>
 
   <!-- Modal Tukar Kata Laluan -->
-  <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title">
-    <div class="modal">
+  <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60">
+    <div class="modal" style="width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.96);opacity:0;animation:pop .18s ease-out forwards">
       <h3 id="pwd-title" style="margin:.2rem 0 .6rem;font-size:20px">Tukar Kata Laluan</h3>
-      <p style="color:#b8c7ff;font-size:13px">Pastikan kata laluan baharu minimum 8 aksara.</p>
-      <div style="display:grid;gap:10px">
+      <p class="muted" style="color:#b8c7ff;font-size:13px">Pastikan kata laluan baharu minimum 8 aksara.</p>
+      <div class="row" style="display:grid;gap:10px">
         <label for="currPwd" style="font-weight:600">Kata Laluan Semasa</label>
         <input id="currPwd" type="password" autocomplete="current-password" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
         <label for="newPwd" style="font-weight:600">Kata Laluan Baharu</label>
@@ -67,33 +71,26 @@
         <label for="newPwd2" style="font-weight:600">Sahkan Kata Laluan Baharu</label>
         <input id="newPwd2" type="password" autocomplete="new-password" minlength="8" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
       </div>
-      <div id="pwdStatus" class="status"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <div id="pwdStatus" class="status" style="margin-top:8px;font-size:14px"></div>
+      <div class="actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
         <button type="button" id="pwdCancel">Batal</button>
         <button type="button" id="pwdSave">Simpan</button>
-        <span id="pwdSpin" class="spinner" aria-hidden="true"></span>
+        <span id="pwdSpin" class="spinner" aria-hidden="true" style="width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#4da3ff;animation:spin 1s linear infinite;display:none"></span>
       </div>
     </div>
   </div>
 
-  <!-- cache-buster untuk elak cache lama -->
+  <!-- auth + cache-buster -->
   <script src="auth.js?v=2025-09-09"></script>
   <script>
-    // Auth + greet + paparkan tile mengikut akses
+    // Auth + salam + paparkan tile Add Account untuk admin
     WFH.ensureAuth((res)=>{
       const email = res.email || localStorage.getItem('wfh_email');
       const name  = localStorage.getItem('wfh_name') || email || 'User';
       document.getElementById('welcome').textContent = 'Hai, ' + name;
-
-      // Admin: sentiasa nampak Add Account
-      if (WFH.isAdminEmail(email)) document.getElementById('tileAddAcc').classList.remove('hidden');
-
-      // Tapis ikut akses (uploader/combine/inventory/reports)
-      const can = (k)=> WFH.canSee ? WFH.canSee(k) : true; // fallback true jika guna auth.js lama
-      if (!can('uploader'))  document.getElementById('tileUploader').classList.add('hidden');
-      if (!can('combine'))   document.getElementById('tileCombine').classList.add('hidden');
-      if (!can('inventory')) document.getElementById('tileInventory').classList.add('hidden');
-      if (!can('reports'))   document.getElementById('tileReports').classList.add('hidden');
+      if (WFH.isAdminEmail && WFH.isAdminEmail(email)) {
+        document.getElementById('tileAddAcc').classList.remove('hidden');
+      }
     });
 
     // Modal Tukar Password
@@ -107,18 +104,12 @@
     const np   = document.getElementById('newPwd');
     const np2  = document.getElementById('newPwd2');
 
-    function openModal(){
-      st.textContent=''; st.className='status';
-      curr.value=''; np.value=''; np2.value='';
-      bd.classList.add('show');
-      setTimeout(()=>curr.focus(),60);
-    }
-    function closeModal(){ bd.classList.remove('show'); }
-
+    function openModal(){ st.textContent=''; curr.value=''; np.value=''; np2.value=''; bd.style.display='flex'; setTimeout(()=>curr.focus(),60); }
+    function closeModal(){ bd.style.display='none'; }
     open.addEventListener('click', (e)=>{ e.preventDefault(); openModal(); });
     canx.addEventListener('click', closeModal);
     bd.addEventListener('click', (e)=>{ if(e.target===bd) closeModal(); });
-    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && bd.classList.contains('show')) closeModal(); });
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && bd.style.display==='flex') closeModal(); });
 
     const msgMap = {
       'KATA LALUAN SALAH':'Kata laluan semasa salah.',
@@ -127,20 +118,14 @@
       'MEDAN_TAK_LENGKAP':'Sila lengkapkan semua medan.',
       'NOT_AUTH':'Sesi tamat atau tidak sah. Sila log masuk semula.'
     };
-
-    function setPwdStatus(msg, ok){
-      st.textContent = msg || '';
-      st.className = 'status ' + (ok ? 'ok' : 'err');
-    }
+    function setPwdStatus(msg, ok){ st.textContent = msg || ''; st.style.color = ok ? '#34d399' : '#ef4444'; }
 
     save.addEventListener('click', ()=>{
       const a = curr.value.trim(), b = np.value.trim(), c = np2.value.trim();
       if (!a || !b || !c){ setPwdStatus('Sila lengkapkan semua medan.', false); return; }
       if (b.length < 8){ setPwdStatus('Kata laluan baharu mesti ≥ 8 aksara.', false); return; }
       if (b !== c){ setPwdStatus('Sahkan kata laluan tidak sepadan.', false); return; }
-
       spin.style.display='inline-block'; save.disabled=true;
-
       WFH.changePassword(a, b, (res)=>{
         spin.style.display='none'; save.disabled=false;
         if (res && res.ok){ setPwdStatus('Berjaya ditukar. Sesi lain (jika ada) telah ditamatkan.', true); setTimeout(closeModal, 900); }
