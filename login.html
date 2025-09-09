@@ -21,7 +21,6 @@
     .status{margin-top:12px;font-size:14px}
     .status.err{color:var(--err)}
     .status.ok{color:var(--ok)}
-
     /* Loading overlay */
     .loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:9999}
     .loading.show{display:flex}
@@ -31,7 +30,7 @@
   </style>
 </head>
 <body>
-  <!-- Auto-login jika datang dengan #t=...&n=...&e=... -->
+  <!-- Auto-login jika datang dengan #t=...&n=...&e=... (redirect dari Apps Script) -->
   <script>
     (function () {
       var hash = location.hash ? location.hash.slice(1) : '';
@@ -51,7 +50,7 @@
 
   <div class="card">
     <h1>Log Masuk</h1>
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="on">
       <label for="email">Emel</label>
       <input id="email" name="email" type="email" required />
       <label for="password">Kata Laluan</label>
@@ -73,7 +72,7 @@
     </div>
   </div>
 
-  <!-- Fallback: pastikan overlay muncul SEBELUM auth.js diproses -->
+  <!-- Fallback awal: paparkan overlay SEBELUM auth.js hook submit -->
   <script>
     (function(){
       var form = document.getElementById('loginForm');
@@ -83,25 +82,40 @@
         var msg = document.getElementById('loginLoadingMsg');
         if (msg) msg.textContent = 'Mengesahkan akaun…';
         if (ov) ov.classList.add('show');
-        // kunci butang supaya elak double submit
         var btn = document.getElementById('loginBtn');
         if (btn) btn.disabled = true;
-        // fallback auto-hide jika tiada respons langsung (contoh error jaringan)
+        // Auto-hide jika rangkaian betul-betul mati (elak overlay “terkunci”)
         setTimeout(function(){
           var still = document.getElementById('loginLoading');
           if (still && still.classList.contains('show')) {
             still.classList.remove('show');
             if (btn) btn.disabled = false;
-            var st = document.getElementById('loginStatus');
-            if (st){ st.textContent = 'Timeout. Cuba lagi.'; st.className = 'status err'; }
           }
         }, 15000);
-      }, {capture:true}); // capture supaya jalan paling awal
+      });
     })();
   </script>
 
-  <!-- Cache-buster supaya browser ambil auth.js versi terbaru -->
-  <script src="auth.js?v=login-loading-2025-09-05"></script>
-  <script>WFH.initLogin();</script>
+  <!-- Muatkan auth.js (cache-buster), kemudian panggil initLogin() -->
+  <script src="auth.js?v=2025-09-09"></script>
+  <script>
+    (function(){
+      var inited = false;
+      if (window.WFH && typeof WFH.initLogin === 'function') {
+        WFH.initLogin();         // hook submit → preventDefault + postViaIframe('login', ...)
+        inited = true;
+      }
+      // Jika auth.js gagal load, halang GET submit (elak ?email=...&password=...)
+      var form = document.getElementById('loginForm');
+      if (!inited && form) {
+        form.addEventListener('submit', function(e){
+          e.preventDefault();
+          var ov = document.getElementById('loginLoading');
+          if (ov) ov.classList.remove('show');
+          alert('Ralat memuatkan auth.js. Sila refresh (Ctrl+F5) dan cuba lagi.');
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
