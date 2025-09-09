@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kelulusan Perolehan – WFH</title>
+  <style>
+    :root{--bg:#0b1020;--card:#121a33;--muted:#9fb0ff;--accent:#4da3ff;--ok:#34d399;--err:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);color:#e9eeff;min-height:100vh}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:40px;height:40px}
+    .nav a,.nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+    .wrap{max-width:880px;margin:20px auto;padding:16px}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:20px}
+    label{display:block;margin:12px 0 6px;font-weight:600}
+    input[type="text"],input[type="file"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    small{color:#b8c7ff}
+    .actions{display:flex;gap:12px;align-items:center;margin-top:18px}
+    button[type="submit"]{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+    .status{margin-top:10px}
+    /* Modal ringkas */
+    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+    .backdrop.show{display:flex}
+    .modal{width:min(92%,420px);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;text-align:center}
+    .modal h3{margin:.3rem 0}
+    .modal .btn{margin-top:14px;padding:10px 18px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL"/>
+    <div>
+      <div style="font-weight:700">WFH – Kelulusan Perolehan</div>
+      <small id="welcome"></small>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="dashboard.html">Home</a>
+    <button onclick="WFH.logout()">Logout</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <form id="formPerolehan" class="card">
+    <label for="prNo">Purchase Requisition No</label>
+    <input id="prNo" name="prNo" type="text" placeholder="cth: PR2025-001" required />
+
+    <label for="dokumen">Upload Dokumen PR (PDF)</label>
+    <input id="dokumen" name="dokumen" type="file" accept="application/pdf" required />
+    <small>PDF sahaja. Saiz disaran ≤ 15MB.</small>
+
+    <div class="actions">
+      <button type="submit">Hantar</button>
+    </div>
+    <div id="status" class="status"></div>
+  </form>
+</div>
+
+<!-- Popup -->
+<div id="popup" class="backdrop">
+  <div class="modal">
+    <h3 id="popup-msg">Berjaya submit!</h3>
+    <button class="btn" onclick="closePopup()">OK</button>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  const form = document.getElementById('formPerolehan');
+  const statusEl = document.getElementById('status');
+  const popup = document.getElementById('popup');
+  const popupMsg = document.getElementById('popup-msg');
+
+  WFH.ensureAuth((res)=>{
+    document.getElementById('welcome').textContent = 'Log masuk sebagai ' + (localStorage.getItem('wfh_name') || res.email);
+  });
+
+  function setStatus(msg, ok){
+    statusEl.textContent = msg;
+    statusEl.style.color = ok ? 'var(--ok)' : 'var(--err)';
+  }
+  function showPopup(msg){ if(msg) popupMsg.textContent=msg; popup.classList.add('show'); }
+  function closePopup(){ popup.classList.remove('show'); }
+
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const prNo = document.getElementById('prNo').value.trim();
+    const file = document.getElementById('dokumen').files[0];
+    if(!prNo || !file){ return setStatus('Sila isi semua medan.', false); }
+    if(file.type !== 'application/pdf'){ return setStatus('Hanya PDF dibenarkan.', false); }
+    if(file.size > 15*1024*1024){ return setStatus('Fail terlalu besar (max 15MB).', false); }
+
+    setStatus('Menghantar...', true);
+
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const base64 = reader.result;
+      WFH.postViaIframe('submitPerolehan', {
+        token: WFH.getToken(),
+        prNo,
+        prFile: base64
+      }, (res)=>{
+        if(res && res.ok){
+          setStatus('', true);
+          showPopup('PR '+prNo+' berjaya dihantar.');
+          form.reset();
+        }else{
+          setStatus('Gagal submit.', false);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
+</body>
+</html>
