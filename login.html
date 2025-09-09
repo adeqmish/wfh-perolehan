@@ -26,9 +26,17 @@
   </style>
 </head>
 <body>
-  <!-- Auto-login jika datang dengan #t=...&n=...&e=... (redirect dari Apps Script) -->
+  <!-- Host guard + auto-login hash -->
   <script>
     (function () {
+      var BASE = 'https://adeqmish.github.io/wfh-perolehan/';
+      // jika bukan di host rasmi, paksa ke host rasmi + kekalkan hash
+      if (!location.href.startsWith(BASE)) {
+        var h = location.hash || '';
+        location.replace(BASE + 'login.html' + h);
+        return;
+      }
+      // auto-login jika datang dengan #t=&n=&e= (redirect dari Apps Script)
       var hash = location.hash ? location.hash.slice(1) : '';
       if (!hash) return;
       var p = new URLSearchParams(hash);
@@ -39,16 +47,14 @@
           if (n) localStorage.setItem('wfh_name', decodeURIComponent(n));
           if (e) localStorage.setItem('wfh_email', decodeURIComponent(e));
         } catch (_) {}
-        location.replace('dashboard.html');
+        location.replace(BASE + 'dashboard.html');
       }
     })();
   </script>
 
   <div class="card">
     <h1>Log Masuk</h1>
-
-    <!-- PLAN C: POST dalam tab yang sama (tiada target iframe) -->
-    <!-- Pastikan action = URL Web App /exec TERKINI -->
+    <!-- Plan C: POST dalam tab yang sama (tanpa iframe) -->
     <form id="loginForm" method="POST"
           action="https://script.google.com/macros/s/AKfycbxIxemsXW4wDbk0rN7YyhRU0OcjNHAs_CWmyVfuddEb5_vz_ehVhi2CdCdqL0eY1dOy/exec">
       <input type="hidden" name="action" value="login">
@@ -60,11 +66,10 @@
       <div class="actions"><button type="submit" id="loginBtn">Masuk</button></div>
       <div id="loginStatus" class="status"></div>
     </form>
-
-    <div class="muted"><a href="forgot.html">Lupa kata laluan?</a></div>
+    <div class="muted"><a href="https://adeqmish.github.io/wfh-perolehan/forgot.html">Lupa kata laluan?</a></div>
   </div>
 
-  <!-- Loading overlay masa login -->
+  <!-- Loading overlay semasa submit -->
   <div id="loginLoading" class="loading" aria-live="polite" aria-busy="true">
     <div class="loading-box">
       <div class="spinner" aria-hidden="true"></div>
@@ -73,24 +78,20 @@
     </div>
   </div>
 
-  <!-- Sediakan returnTo + overlay sebelum submit -->
+  <!-- Sediakan returnTo + overlay -->
   <script>
     (function(){
       var form = document.getElementById('loginForm');
       var btn  = document.getElementById('loginBtn');
       var ov   = document.getElementById('loginLoading');
       var msg  = document.getElementById('loginLoadingMsg');
-
-      // Tetapkan returnTo ke login.html (supaya backend redirect balik ke sini dengan #t=...)
-      var base = location.origin + location.pathname.replace(/[^/]+$/, '');
-      document.getElementById('returnTo').value = base + 'login.html'; // penting! :contentReference[oaicite:1]{index=1}
-
+      var BASE = 'https://adeqmish.github.io/wfh-perolehan/';
+      // penting: backend akan redirect ke returnTo#t=... (rujuk Apps Script doPost 'login') 
+      document.getElementById('returnTo').value = BASE + 'login.html'; // :contentReference[oaicite:4]{index=4}
       form.addEventListener('submit', function(){
         if (msg) msg.textContent = 'Mengesahkan akaun…';
         if (ov) ov.classList.add('show');
         if (btn) btn.disabled = true;
-
-        // Auto-hide jika rangkaian gagal (sekadar elak overlay terkunci)
         setTimeout(function(){
           if (ov && ov.classList.contains('show')) {
             ov.classList.remove('show');
@@ -103,11 +104,11 @@
     })();
   </script>
 
-  <!-- Optional enhancement: jika auth.js berjaya load, ia guna flow postMessage (UI lebih cantik) -->
+  <!-- Optional enhancement: jika auth.js tersedia, ia perelok UI submit -->
   <script src="auth.js?v=2025-09-09"></script>
   <script>
     if (window.WFH && typeof WFH.initLogin === 'function') {
-      WFH.initLogin(); // tidak wajib untuk Plan C, tapi akan memperelok pengalaman pengguna. :contentReference[oaicite:2]{index=2}
+      WFH.initLogin(); // hook submit → postViaIframe('login', ...) (aliran serasi)  :contentReference[oaicite:5]{index=5}
     }
   </script>
 </body>
