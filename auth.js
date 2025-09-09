@@ -1,11 +1,11 @@
 /* =========================================================
-   SETTINGS (ubah ikut projek tuan)
+   SETTINGS
    ========================================================= */
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbx853pMuyOtdpgXu_tOygPtxdVgcP1L-bh1Y6kqZhWju-tqu4SkKkj0CuL0aOALvQDc/exec';
-const ADMIN_EMAILS = ['missyahrul@unisel.edu.my']; // tambah emel admin lain jika perlu
+const ADMIN_EMAILS = ['missyahrul@unisel.edu.my']; // tambah admin lain jika perlu
 
 /* =========================================================
-   UTILITIES: storage token & helpers
+   UTILITIES: token & profile storage
    ========================================================= */
 if (!window.WFH) window.WFH = {};
 
@@ -25,7 +25,7 @@ WFH.isAdminEmail = function(email){
 };
 
 /* =========================================================
-   postViaIframe: hantar ke Apps Script tanpa buka tab
+   postViaIframe: hantar ke Apps Script (dengan fail-safe)
    ========================================================= */
 (function initIframePoster(){
   const IFM_ID = 'wfh_iframe_poster';
@@ -42,20 +42,27 @@ WFH.isAdminEmail = function(email){
     form.appendChild(input); document.body.appendChild(form);
   }
 
+  // Versi dengan timeout: jika Apps Script tak balas, kita matikan loader & pulangkan ralat mesra.
   window.postViaIframe = function(action, data, cb){
-    function onMsg(ev){
+    const onMsg = (ev)=>{
       try{
         const d = ev.data || {};
         if (d && d.source === 'auth' && (d.kind === action || (d.kind||'').startsWith(action))) {
           window.removeEventListener('message', onMsg);
+          clearTimeout(timer);
           cb && cb(d.result || d);
         }
       }catch(_){}
-    }
+    };
     window.addEventListener('message', onMsg);
 
-    const payload = JSON.stringify({ action, ...data });
-    document.getElementById('wfh_payload').value = payload;
+    // ⏱ fail-safe: auto-timeout jika tiada balasan
+    const timer = setTimeout(()=>{
+      window.removeEventListener('message', onMsg);
+      cb && cb({ ok:false, message:'NET_TIMEOUT' });
+    }, 12000);
+
+    document.getElementById('wfh_payload').value = JSON.stringify({ action, ...data });
     document.getElementById('wfh_form_poster').submit();
   };
 })();
@@ -99,13 +106,18 @@ WFH.initLogin = function(){
 
     ov?.classList.add('show'); if (msg) msg.textContent='Mengesahkan akaun…';
     postViaIframe('login', { email, password }, function(res){
+      // pastikan overlay tutup walau timeout / ralat
       ov?.classList.remove('show');
+
       if (res && res.ok && res.token){
         WFH.setToken(res.token);
         WFH.setProfile(res.name, res.email);
         location.href = 'dashboard.html';
       } else {
-        setStatus(res && res.message ? res.message : 'Gagal log masuk.', false);
+        const m = (res && res.message === 'NET_TIMEOUT')
+          ? 'Rangkaian perlahan atau gagal. Sila cuba lagi.'
+          : (res && res.message) || 'Gagal log masuk.';
+        setStatus(m, false);
       }
     });
   });
@@ -153,7 +165,7 @@ WFH.deleteUser = function(email, cb){
 };
 
 /* =========================================================
-   MODUL KELULUSAN PEROLEHAN
+   MODUL KELULUSAN PEROLEHAN (client <-> Apps Script)
    ========================================================= */
 const b64Strip = (s)=> String(s||'').replace(/^data:.*?;base64,/,'');
 
