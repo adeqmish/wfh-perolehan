@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kelulusan Bendahari – WFH</title>
+  <style>
+    :root{--bg:#0b1020;--card:#121a33;--muted:#9fb0ff;--accent:#4da3ff}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);font-family:Inter,system-ui,Segoe UI,Arial;color:#e9eeff}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:40px;height:40px}
+    .nav a,.nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:#4da3ff;color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+    .wrap{max-width:980px;margin:20px auto;padding:16px}
+    .card{background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:20px}
+    h2{margin:0 0 10px}
+    .list{max-height:460px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    .td-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type="file"]{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    .btn{padding:8px 12px;border-radius:10px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+    .muted{color:#b8c7ff}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL" />
+    <div>
+      <div style="font-weight:700">WFH – Kelulusan Bendahari</div>
+      <small id="welcome" class="muted"></small>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="dashboard.html">Home</a>
+    <a href="kelulusan-perolehan.html">Perolehan</a>
+    <a href="kelulusan-nc.html">Naib Canselor</a>
+    <a href="laporan-perolehan.html">Laporan</a>
+    <button onclick="WFH.logout()">Logout</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Senarai PO – Menunggu Kelulusan Bendahari</h2>
+    <div class="list">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24%">No PO</th>
+            <th>Pemohon</th>
+            <th>Tarikh Mohon</th>
+            <th>Dokumen Perolehan</th>
+            <th style="width:1%">Upload (PDF)</th>
+            <th style="width:1%">Hantar</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="6" class="muted">Memuatkan…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  WFH.ensureAuth((res)=>{
+    document.getElementById('welcome').textContent = 'Log masuk sebagai ' + (localStorage.getItem('wfh_name')||res.email);
+    render();
+  });
+
+  function render(){
+    WFH.poListBendahari((r)=>{
+      const tb=document.getElementById('tbody');
+      tb.innerHTML='';
+      if(!r || !r.ok || !Array.isArray(r.items) || !r.items.length){
+        tb.innerHTML='<tr><td colspan="6" class="muted">Tiada rekod.</td></tr>'; return;
+      }
+      r.items.forEach(row=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${row.poNo}</td>
+                        <td>${row.createdBy||'-'}</td>
+                        <td>${row.createdAt||'-'}</td>
+                        <td>${row.perolehanUrl?`<a class="btn" href="${row.perolehanUrl}" target="_blank">Download</a>`:'-'}</td>
+                        <td><input type="file" accept="application/pdf"></td>
+                        <td><button class="btn">Submit</button></td>`;
+        const fileInput = tr.children[4].querySelector('input');
+        const btn = tr.children[5].querySelector('button');
+        btn.onclick = async ()=>{
+          const f=fileInput.files[0];
+          if(!f || f.type!=='application/pdf'){ alert('Pilih fail PDF.'); return; }
+          const b64 = await f.arrayBuffer().then(buf=>{ let bin=''; const bytes=new Uint8Array(buf); const chunk=0x8000; for(let i=0;i<bytes.length;i+=chunk){ bin += String.fromCharCode.apply(null, bytes.subarray(i,i+chunk)); } return btoa(bin); });
+          WFH.poBendahariSubmit(row.id, b64, ()=>{ render(); });
+        };
+        document.getElementById('tbody').appendChild(tr);
+      });
+    });
+  }
+</script>
+</body>
+</html>
