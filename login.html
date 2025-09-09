@@ -4,9 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login – WFH</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{--bg:#0b1020;--card:#121a33;--accent:#4da3ff;--muted:#b8c7ff;--ok:#34d399;--err:#ef4444}
     body{margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);font-family:Inter,system-ui,Segoe UI,Arial;color:#e9eeff}
@@ -30,7 +27,7 @@
   </style>
 </head>
 <body>
-  <!-- Auto-login jika datang dengan #t=...&n=...&e=... (redirect dari Apps Script) -->
+  <!-- Auto-login jika datang dengan #t=...&n=...&e=... daripada Apps Script -->
   <script>
     (function () {
       var hash = location.hash ? location.hash.slice(1) : '';
@@ -50,7 +47,13 @@
 
   <div class="card">
     <h1>Log Masuk</h1>
-    <form id="loginForm" autocomplete="on">
+
+    <!-- Fallback SELAMAT: POST terus ke Apps Script jika auth.js gagal -->
+    <!-- Tukar APPS_URL di bawah kepada URL Web App anda jika berbeza -->
+    <form id="loginForm" method="POST" target="authFrame"
+          action="https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec">
+      <input type="hidden" name="action" value="login">
+      <input type="hidden" name="returnTo" id="returnTo">
       <label for="email">Emel</label>
       <input id="email" name="email" type="email" required />
       <label for="password">Kata Laluan</label>
@@ -58,10 +61,14 @@
       <div class="actions"><button type="submit" id="loginBtn">Masuk</button></div>
       <div id="loginStatus" class="status"></div>
     </form>
+
     <div class="muted">
       <a href="forgot.html">Lupa kata laluan?</a>
     </div>
   </div>
+
+  <!-- Iframe untuk terima respons/redirect dari Apps Script -->
+  <iframe name="authFrame" style="display:none"></iframe>
 
   <!-- Loading overlay masa login -->
   <div id="loginLoading" class="loading" aria-live="polite" aria-busy="true">
@@ -72,50 +79,43 @@
     </div>
   </div>
 
-  <!-- Fallback awal: paparkan overlay SEBELUM auth.js hook submit -->
+  <!-- Aktifkan overlay & siapkan returnTo sebelum submit -->
   <script>
     (function(){
       var form = document.getElementById('loginForm');
-      if (!form) return;
+      var btn  = document.getElementById('loginBtn');
+      var ov   = document.getElementById('loginLoading');
+      var msg  = document.getElementById('loginLoadingMsg');
+
+      // set returnTo = URL login.html sekarang (tanpa nama fail lain)
+      var base = location.origin + location.pathname.replace(/[^/]+$/, '');
+      document.getElementById('returnTo').value = base + 'login.html';
+
       form.addEventListener('submit', function(){
-        var ov = document.getElementById('loginLoading');
-        var msg = document.getElementById('loginLoadingMsg');
         if (msg) msg.textContent = 'Mengesahkan akaun…';
         if (ov) ov.classList.add('show');
-        var btn = document.getElementById('loginBtn');
         if (btn) btn.disabled = true;
-        // Auto-hide jika rangkaian betul-betul mati (elak overlay “terkunci”)
+
+        // auto-hide jika tiada respons langsung (contoh offline)
         setTimeout(function(){
-          var still = document.getElementById('loginLoading');
-          if (still && still.classList.contains('show')) {
-            still.classList.remove('show');
+          if (ov && ov.classList.contains('show')) {
+            ov.classList.remove('show');
             if (btn) btn.disabled = false;
+            document.getElementById('loginStatus').textContent = 'Rangkaian perlahan atau gagal. Cuba lagi.';
+            document.getElementById('loginStatus').className = 'status err';
           }
         }, 15000);
       });
     })();
   </script>
 
-  <!-- Muatkan auth.js (cache-buster), kemudian panggil initLogin() -->
+  <!-- Cuba muatkan auth.js (jika berjaya, ia override submit & guna postMessage) -->
   <script src="auth.js?v=2025-09-09"></script>
   <script>
-    (function(){
-      var inited = false;
-      if (window.WFH && typeof WFH.initLogin === 'function') {
-        WFH.initLogin();         // hook submit → preventDefault + postViaIframe('login', ...)
-        inited = true;
-      }
-      // Jika auth.js gagal load, halang GET submit (elak ?email=...&password=...)
-      var form = document.getElementById('loginForm');
-      if (!inited && form) {
-        form.addEventListener('submit', function(e){
-          e.preventDefault();
-          var ov = document.getElementById('loginLoading');
-          if (ov) ov.classList.remove('show');
-          alert('Ralat memuatkan auth.js. Sila refresh (Ctrl+F5) dan cuba lagi.');
-        });
-      }
-    })();
+    // Jika WFH.initLogin wujud, gunakan aliran “postMessage” (lebih mesra UI)
+    if (window.WFH && typeof WFH.initLogin === 'function') {
+      WFH.initLogin(); // akan preventDefault & postViaIframe('login', ...) dari auth.js baharu :contentReference[oaicite:1]{index=1}
+    }
   </script>
 </body>
 </html>
