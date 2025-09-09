@@ -21,13 +21,19 @@
     .actions{display:flex;gap:10px;align-items:center;margin-top:12px}
     .btn{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     .status{margin-top:8px;font-size:14px}
-    .status.ok{color:var(--ok)}
-    .status.err{color:var(--err)}
+    .status.ok{color:var(--ok)} .status.err{color:var(--err)}
     table{width:100%;border-collapse:collapse;margin-top:14px}
-    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:top}
     .xbtn{padding:6px 10px;border-radius:10px;border:0;background:#2a1320;color:#ffd1d9;cursor:pointer}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#0e1733;border:1px solid rgba(255,255,255,.12);margin:2px 4px 0 0;font-size:12px}
     .muted{color:#b8c7ff;font-size:13px}
     .hidden{display:none}
+    /* modal */
+    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+    .backdrop.show{display:flex}
+    .modal{width:min(92%,520px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px}
+    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+    .box{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
   </style>
 </head>
 <body>
@@ -48,11 +54,23 @@
 <div class="wrap">
   <div class="card">
     <h2>Tambah Akses Login</h2>
-    <p class="muted">Masukkan emel staf/pengguna. Sistem akan cipta kata laluan rawak dan hantar emel akses.</p>
+    <p class="muted">Masukkan emel staf/pengguna, pilih halaman yang dibenarkan, kemudian hantar jemputan.</p>
     <div class="row">
       <label for="accEmail">Emel Pengguna</label>
       <input id="accEmail" type="email" placeholder="cth: nama@unisel.edu.my" required>
     </div>
+
+    <div class="row">
+      <label>Halaman yang dibenarkan</label>
+      <div class="grid2 box" id="accessPick">
+        <label><input type="checkbox" value="uploader"> Upload & Merge PO/PR</label>
+        <label><input type="checkbox" value="combine"> Combine File (PDF)</label>
+        <label><input type="checkbox" value="inventory"> Inventory (coming soon)</label>
+        <label><input type="checkbox" value="reports"> Reports (coming soon)</label>
+      </div>
+      <small class="muted">Boleh ubah semula kemudian pada “Senarai Akaun Aktif”.</small>
+    </div>
+
     <div class="actions">
       <button id="btnAdd" class="btn">Hantar Jemputan</button>
       <span id="stat" class="status"></span>
@@ -62,62 +80,129 @@
 
     <h3>Senarai Akaun Aktif</h3>
     <table id="tbl">
-      <thead><tr><th style="width:42%">Emel</th><th>Nama</th><th>Tarikh Buat</th><th style="width:1%"></th></tr></thead>
-      <tbody id="tbody"><tr><td colspan="4" class="muted">Memuatkan…</td></tr></tbody>
+      <thead>
+        <tr>
+          <th style="width:28%">Emel</th>
+          <th style="width:18%">Nama</th>
+          <th style="width:18%">Tarikh Buat</th>
+          <th>Akses</th>
+          <th style="width:1%"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="5" class="muted">Memuatkan…</td></tr></tbody>
     </table>
     <p class="muted">Padam akaun akan membuang akses login serta-merta (sesi aktif juga ditamatkan).</p>
   </div>
 </div>
 
+<!-- Modal Edit Akses -->
+<div id="axBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="ax-title">
+  <div class="modal">
+    <h3 id="ax-title" style="margin:.2rem 0 .6rem">Edit Akses</h3>
+    <p class="muted" id="ax-user"></p>
+    <div class="grid2 box" id="axPick">
+      <label><input type="checkbox" value="uploader"> Upload & Merge PO/PR</label>
+      <label><input type="checkbox" value="combine"> Combine File (PDF)</label>
+      <label><input type="checkbox" value="inventory"> Inventory (coming soon)</label>
+      <label><input type="checkbox" value="reports"> Reports (coming soon)</label>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:12px">
+      <button id="axCancel" class="btn">Tutup</button>
+      <button id="axSave" class="btn">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script src="auth.js"></script>
 <script>
-  // Auth guard & admin-only gate
+  // Auth guard & admin-only
   WFH.ensureAuth((res)=>{
     const who = localStorage.getItem('wfh_name') || res.email;
     document.getElementById('welcome').textContent = 'Log masuk sebagai ' + who;
-    WFH.ensureAdminOrBack('dashboard.html'); // redirect kalau bukan admin
+    WFH.ensureAdminOrBack('dashboard.html');
     loadList();
   });
 
   const stat = document.getElementById('stat');
   function setStat(msg, ok){ stat.textContent = msg||''; stat.className = 'status ' + (ok?'ok':'err'); }
 
-  async function loadList(){
+  function readChecks(boxId){
+    return Array.from(document.querySelectorAll('#'+boxId+' input[type="checkbox"]:checked')).map(i=>i.value);
+  }
+  function fillChecks(boxId, arr){
+    const set = new Set(arr||[]);
+    document.querySelectorAll('#'+boxId+' input[type="checkbox"]').forEach(i=> i.checked = set.has(i.value));
+  }
+  function tagify(arr){
+    if (!arr || !arr.length) return '<span class="muted">Tiada</span>';
+    const map = {uploader:'Upload & Merge', combine:'Combine PDF', inventory:'Inventory', reports:'Reports'};
+    return arr.map(k=>`<span class="tag">${map[k]||k}</span>`).join(' ');
+  }
+
+  // LIST
+  function loadList(){
     setStat('', true);
     WFH.listUsers((res)=>{
       const tb = document.getElementById('tbody');
       tb.innerHTML = '';
       if (!res || !res.ok || !Array.isArray(res.users) || !res.users.length){
-        tb.innerHTML = '<tr><td colspan="4" class="muted">Tiada akaun.</td></tr>'; return;
+        tb.innerHTML = '<tr><td colspan="5" class="muted">Tiada akaun.</td></tr>'; return;
       }
       res.users.forEach(u=>{
         const tr = document.createElement('tr');
-        const tdE = document.createElement('td'); tdE.textContent = u.email || '';
-        const tdN = document.createElement('td'); tdN.textContent = u.name || '';
-        const tdC = document.createElement('td'); tdC.textContent = u.createdAt || '';
-        const tdX = document.createElement('td'); 
-        const del = document.createElement('button'); del.className='xbtn'; del.textContent='Padam';
-        del.onclick = ()=>{ if (confirm('Padam akaun '+(u.email||'')+' ?')) doDelete(u.email); };
-        tdX.appendChild(del);
-        tr.append(tdE, tdN, tdC, tdX);
+        tr.innerHTML = `
+          <td>${u.email||''}</td>
+          <td>${u.name||''}</td>
+          <td>${u.createdAt||''}</td>
+          <td>
+            ${tagify(u.access)}
+            <div class="actions" style="margin-top:8px">
+              <button class="btn" data-edit="${u.email}">Edit Akses</button>
+            </div>
+          </td>
+          <td>
+            <button class="xbtn" data-del="${u.email}">Padam</button>
+          </td>
+        `;
         tb.appendChild(tr);
+      });
+
+      // bind buttons
+      tb.querySelectorAll('[data-del]').forEach(b=>{
+        b.onclick = ()=>{
+          const email = b.getAttribute('data-del');
+          if (confirm('Padam akaun '+email+' ?')) doDelete(email);
+        };
+      });
+      tb.querySelectorAll('[data-edit]').forEach(b=>{
+        b.onclick = ()=>{
+          const email = b.getAttribute('data-edit');
+          openEdit(email);
+        };
       });
     });
   }
 
+  // ADD
   document.getElementById('btnAdd').addEventListener('click', ()=>{
     const e = document.getElementById('accEmail').value.trim().toLowerCase();
     if (!e){ setStat('Sila masukkan emel.', false); return; }
+    const pages = readChecks('accessPick');
     setStat('Memproses…', true);
-    WFH.addUser(e, (res)=>{
-      if (res && res.ok){ setStat('Akaun dicipta & emel akses dihantar.', true); document.getElementById('accEmail').value=''; loadList(); }
-      else {
+    WFH.addUser(e, pages, (res)=>{
+      if (res && res.ok){
+        setStat('Akaun dicipta & emel akses dihantar.', true);
+        document.getElementById('accEmail').value='';
+        fillChecks('accessPick', []);
+        loadList();
+      } else {
         const m = (res && res.message) ? String(res.message) : 'Gagal menambah akaun.';
         setStat(m, false);
       }
     });
   });
 
+  // DELETE
   function doDelete(email){
     setStat('Memadam…', true);
     WFH.deleteUser(email, (res)=>{
@@ -125,6 +210,35 @@
       else { setStat((res && res.message)||'Gagal padam akaun.', false); }
     });
   }
+
+  // EDIT ACCESS
+  const axBackdrop = document.getElementById('axBackdrop');
+  const axUser = document.getElementById('ax-user');
+  let editingEmail = '';
+  function openEdit(email){
+    // dapatkan akses semasa dari row (sudah ada dalam res.users), jadi kita reload list & cari
+    WFH.listUsers((res)=>{
+      const u = (res.users||[]).find(x=> (x.email||'').toLowerCase()===email.toLowerCase());
+      editingEmail = email;
+      axUser.textContent = email;
+      fillChecks('axPick', u && Array.isArray(u.access) ? u.access : []);
+      axBackdrop.classList.add('show');
+    });
+  }
+  document.getElementById('axCancel').onclick = ()=> axBackdrop.classList.remove('show');
+  document.getElementById('axSave').onclick = ()=>{
+    const pages = readChecks('axPick');
+    setStat('Menyimpan akses…', true);
+    WFH.updateUserAccess(editingEmail, pages, (res)=>{
+      if (res && res.ok){
+        setStat('Akses dikemaskini.', true);
+        axBackdrop.classList.remove('show');
+        loadList();
+      } else {
+        setStat((res && res.message)||'Gagal kemaskini akses.', false);
+      }
+    });
+  };
 </script>
 </body>
 </html>
