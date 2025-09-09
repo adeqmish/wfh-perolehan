@@ -3,23 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard – WFH</title>
+  <title>Dashboard – WFH UNISEL</title>
   <style>
     :root{--bg:#0b1020;--card:#121a33;--accent:#4da3ff;--ok:#34d399;--err:#ef4444}
+    *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);font-family:Inter,system-ui,Segoe UI,Arial;color:#e9eeff}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
     .brand{display:flex;align-items:center;gap:10px}
     .brand img{width:40px;height:40px}
     .card{background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);width:min(92%,980px);margin:20px auto;padding:20px}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-    .tile{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;text-decoration:none;color:#e9eeff;display:block}
-    .tile:hover{border-color:#4da3ff}
+    .tile{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;text-decoration:none;color:#e9eeff;display:block;transition:border-color .15s,transform .15s}
+    .tile:hover{border-color:#4da3ff;transform:translateY(-2px)}
     button{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
     .hidden{display:none}
-    @keyframes pop { to{transform:scale(1);opacity:1;} }
-    @keyframes spin { to{transform:rotate(360deg);} }
-    .backdrop.show{display:flex !important;}
-    .backdrop .modal.show{opacity:1 !important;transform:scale(1) !important;}
+    .muted{color:#b8c7ff;font-size:13px}
+
+    /* Modal */
+    .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60}
+    .modal{width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px}
+    .row{display:grid;gap:10px}
+    .status{margin-top:8px;font-size:14px}
+    @keyframes spin {to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
@@ -28,7 +33,7 @@
       <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL"/>
       <div>
         <div style="font-weight:700">WFH Dashboard</div>
-        <small id="welcome"></small>
+        <small id="welcome" class="muted"></small>
       </div>
     </div>
     <div>
@@ -38,76 +43,99 @@
 
   <main class="card">
     <h2>Menu</h2>
+    <p class="muted" id="tip">Pilih modul di bawah.</p>
     <div class="grid">
-      <a class="tile hidden" id="tileUploader" href="uploader.html">📄 Upload & Merge PO/PR</a>
-      <a class="tile hidden" id="tileCombine" href="combine.html">🧩 Combine File (PDF)</a>
-      <a class="tile" href="#" id="openPwd">🔒 Tukar Kata Laluan</a>
+      <!-- Kawal visibility melalui JS -->
+      <a class="tile hidden" id="tileUploader"  href="uploader.html">📄 Upload &amp; Merge PO/PR</a>
+      <a class="tile hidden" id="tileCombine"   href="combine.html">🧩 Combine File (PDF)</a>
+      <a class="tile"        id="openPwd"       href="#">🔒 Tukar Kata Laluan</a>
       <!-- Admin only -->
-      <a class="tile hidden" id="tileAddAcc" href="add-account.html">➕ Add Account</a>
-      <!-- Coming soon -->
+      <a class="tile hidden" id="tileAddAcc"    href="add-account.html">➕ Add Account</a>
+      <!-- Coming soon (ikut access) -->
       <a class="tile hidden" id="tileInventory" href="#" onclick="alert('Coming soon')">📦 Inventory (coming soon)</a>
-      <a class="tile hidden" id="tileReports" href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
+      <a class="tile hidden" id="tileReports"   href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
     </div>
   </main>
 
-  <!-- Modal Tukar Kata Laluan (asal dikekalkan) -->
-  <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.6);backdrop-filter:blur(4px);z-index:60">
-    <div class="modal" style="width:min(92%,480px);background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 30px 120px rgba(0,0,0,.6);padding:22px;transform:scale(.96);opacity:0;animation:pop .18s ease-out forwards">
+  <!-- Modal Tukar Kata Laluan -->
+  <div id="pwdBackdrop" class="backdrop" role="dialog" aria-modal="true" aria-labelledby="pwd-title">
+    <div class="modal">
       <h3 id="pwd-title" style="margin:.2rem 0 .6rem;font-size:20px">Tukar Kata Laluan</h3>
-      <p class="muted" style="color:#b8c7ff;font-size:13px">Pastikan kata laluan baharu minimum 8 aksara.</p>
-      <div class="row" style="display:grid;gap:10px">
+      <p class="muted">Pastikan kata laluan baharu minimum 8 aksara.</p>
+      <div class="row">
         <label for="currPwd" style="font-weight:600">Kata Laluan Semasa</label>
         <input id="currPwd" type="password" autocomplete="current-password" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
+
         <label for="newPwd" style="font-weight:600">Kata Laluan Baharu</label>
         <input id="newPwd" type="password" autocomplete="new-password" minlength="8" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
+
         <label for="newPwd2" style="font-weight:600">Sahkan Kata Laluan Baharu</label>
-        <input id="newPwd2" type="password" autocomplete="new-password" minlength="8" style="width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
+        <input id="newPwd2" type="password" autocomplete="new-password" minlength="8" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff"/>
       </div>
-      <div id="pwdStatus" class="status" style="margin-top:8px;font-size:14px"></div>
-      <div class="actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+
+      <div id="pwdStatus" class="status"></div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;align-items:center">
         <button type="button" id="pwdCancel">Batal</button>
         <button type="button" id="pwdSave">Simpan</button>
-        <span id="pwdSpin" class="spinner" aria-hidden="true" style="width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#4da3ff;animation:spin 1s linear infinite;display:none"></span>
+        <span id="pwdSpin" style="width:20px;height:20px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#4da3ff;animation:spin 1s linear infinite;display:none"></span>
       </div>
     </div>
   </div>
 
   <script src="auth.js?v=2025-09-09"></script>
   <script>
-    // Auth + greet
+    // ===== Helpers UI =====
+    const el = (id)=>document.getElementById(id);
+    const show = (id)=> el(id)?.classList.remove('hidden');
+
+    // ===== Auth & Tiles Control =====
     WFH.ensureAuth((res)=>{
-      const email = res.email || localStorage.getItem('wfh_email');
-      const name = localStorage.getItem('wfh_name') || email || 'User';
-      document.getElementById('welcome').textContent = 'Hai, ' + name;
+      const email = res.email || localStorage.getItem('wfh_email') || '';
+      const name  = localStorage.getItem('wfh_name') || email || 'User';
+      el('welcome').textContent = 'Hai, ' + name;
 
-      // Admin tile
-      if (WFH.isAdminEmail(email)) document.getElementById('tileAddAcc').classList.remove('hidden');
+      // Add Account hanya admin
+      if (WFH.isAdminEmail(email)) show('tileAddAcc');
 
-      // Dapatkan access untuk kawal tiles lain
+      // ADMIN: tunjuk SEMUA page tanpa tunggu akses backend
+      if (WFH.isAdminEmail(email)) {
+        ['tileUploader','tileCombine','tileInventory','tileReports'].forEach(show);
+        el('tip').textContent = 'Mod admin: semua modul dipaparkan.';
+        return;
+      }
+
+      // Jika belum wujud sistem akses di auth.js, fallback: bagi akses asas
+      if (typeof WFH.getAccess !== 'function') {
+        ['tileUploader','tileCombine'].forEach(show);
+        return;
+      }
+
+      // Baca akses dari backend
       WFH.getAccess((r)=>{
         const acc = (r && r.ok && Array.isArray(r.access)) ? r.access : [];
-        const showIf = (key, id)=>{ if (acc.includes(key)) document.getElementById(id).classList.remove('hidden'); };
-        showIf('uploader','tileUploader');
-        showIf('combine','tileCombine');
-        showIf('inventory','tileInventory');
-        showIf('reports','tileReports');
+        if (!acc.length){ ['tileUploader','tileCombine'].forEach(show); return; }
+        if (acc.includes('uploader'))  show('tileUploader');
+        if (acc.includes('combine'))   show('tileCombine');
+        if (acc.includes('inventory')) show('tileInventory');
+        if (acc.includes('reports'))   show('tileReports');
       });
     });
 
-    // Modal tukar password (kod asal dikekalkan)
-    const bd = document.getElementById('pwdBackdrop');
-    const openBtn = document.getElementById('openPwd');
-    const cancelBtn = document.getElementById('pwdCancel');
-    const saveBtn = document.getElementById('pwdSave');
-    const st = document.getElementById('pwdStatus');
-    const spin = document.getElementById('pwdSpin');
-    const curr = document.getElementById('currPwd');
-    const np = document.getElementById('newPwd');
-    const np2 = document.getElementById('newPwd2');
+    // ===== Password Modal =====
+    const bd = el('pwdBackdrop');
+    const openBtn = el('openPwd');
+    const cancelBtn = el('pwdCancel');
+    const saveBtn = el('pwdSave');
+    const st = el('pwdStatus');
+    const spin = el('pwdSpin');
+    const curr = el('currPwd');
+    const np = el('newPwd');
+    const np2 = el('newPwd2');
 
-    function openModal(){ st.textContent=''; curr.value=''; np.value=''; np2.value=''; bd.style.display='flex'; setTimeout(()=>curr.focus(),50); }
+    function openModal(){ st.textContent=''; st.style.color=''; curr.value=''; np.value=''; np2.value=''; bd.style.display='flex'; setTimeout(()=>curr.focus(),50); }
     function closeModal(){ bd.style.display='none'; }
-    openBtn.addEventListener('click', openModal);
+    openBtn.addEventListener('click', (e)=>{ e.preventDefault(); openModal(); });
     cancelBtn.addEventListener('click', closeModal);
     bd.addEventListener('click', (e)=>{ if(e.target===bd) closeModal(); });
 
@@ -118,14 +146,21 @@
       'MEDAN_TAK_LENGKAP':'Sila lengkapkan semua medan.',
       'NOT_AUTH':'Sesi tamat. Sila log masuk semula.'
     };
+
     saveBtn.addEventListener('click', ()=>{
       const a = curr.value.trim(), b = np.value.trim(), c = np2.value.trim();
-      if (!a || !b || b!==c){ st.textContent = (!a||!b)?'Sila isi semua medan.':'Sahkan kata laluan tidak sepadan.'; return; }
+      if (!a || !b || !c){ st.style.color='var(--err)'; st.textContent='Sila isi semua medan.'; return; }
+      if (b !== c){ st.style.color='var(--err)'; st.textContent='Sahkan kata laluan tidak sepadan.'; return; }
       st.textContent=''; spin.style.display='inline-block'; saveBtn.disabled=true;
+
       WFH.changePassword(a, b, (res)=>{
         spin.style.display='none'; saveBtn.disabled=false;
-        if (res && res.ok){ st.style.color='#34d399'; st.textContent='Berjaya ditukar.'; setTimeout(closeModal, 800); }
-        else { st.style.color='#ef4444'; st.textContent = (res && res.message && msgMap[res.message]) ? msgMap[res.message] : 'Gagal tukar kata laluan.'; }
+        if (res && res.ok){ st.style.color='var(--ok)'; st.textContent='Berjaya ditukar.'; setTimeout(closeModal, 800); }
+        else {
+          const msg = (res && res.message && msgMap[res.message]) ? msgMap[res.message] : 'Gagal tukar kata laluan.';
+          st.style.color='var(--err)'; st.textContent = msg;
+          if (res && res.message === 'NOT_AUTH') setTimeout(()=>location.href='login.html', 900);
+        }
       });
     });
   </script>
