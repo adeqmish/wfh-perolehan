@@ -1,7 +1,8 @@
-// ====== CONFIG ======
+<script>
+/* ====== CONFIG ====== */
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec';
 
-// ====== Helpers (session) ======
+/* ====== Session ====== */
 function saveSession(token, name, email){
   localStorage.setItem('wfh_token', token);
   if (name)  localStorage.setItem('wfh_name', name);
@@ -12,9 +13,10 @@ function clearSession(){
   localStorage.removeItem('wfh_token');
   localStorage.removeItem('wfh_name');
   localStorage.removeItem('wfh_email');
+  localStorage.removeItem('wfh_access'); // buang cache akses bila logout
 }
 
-// ====== Helpers (network via hidden iframe) ======
+/* ====== Network (hidden iframe) ====== */
 function postViaIframe(action, fields = {}, cb){
   const iframeName = 'authFrame';
   let ifr = document.getElementById(iframeName);
@@ -38,7 +40,6 @@ function postViaIframe(action, fields = {}, cb){
     if (typeof data === 'string'){ try{ data = JSON.parse(data); }catch(_){} }
     if (!data || typeof data !== 'object') return;
     const src = data.source;
-    // Terima mesej dari Apps Script kita sahaja
     if (src !== 'auth' && src !== 'po-pr-uploader') return;
     handled = true;
     window.removeEventListener('message', onMsg);
@@ -50,17 +51,13 @@ function postViaIframe(action, fields = {}, cb){
   f.submit();
   setTimeout(()=>f.remove(), 0);
 
-  // Fallback: jika tiada postMessage diterima (contoh: backend buat redirect)
   setTimeout(()=>{ if (!handled && cb) cb({ok:false, message:'NO_MESSAGE'}); }, 8000);
 }
 
-// ====== UI helpers (login page) ======
+/* ====== UI helpers (login) ====== */
 function setLoginStatus(msg, ok){
   const el = document.getElementById('loginStatus');
-  if (el){
-    el.textContent = msg || '';
-    el.className = 'status ' + (ok ? 'ok' : 'err');
-  }
+  if (el){ el.textContent = msg || ''; el.className = 'status ' + (ok ? 'ok' : 'err'); }
 }
 function showLoginLoading(msg){
   const overlay = document.getElementById('loginLoading');
@@ -79,7 +76,7 @@ function hideLoginLoading(){
   if (btn) btn.disabled = false;
 }
 
-// ====== Pages ======
+/* ====== Pages ====== */
 function initLogin(){
   const form = document.getElementById('loginForm');
   if (!form) return;
@@ -88,36 +85,35 @@ function initLogin(){
     setLoginStatus('', true);
 
     const email = form.email.value.trim();
-    const password = form.password.value.trim(); // penting: trim
+    const password = form.password.value.trim();
     if (!email || !password){
       setLoginStatus('Isi emel & kata laluan.', false);
-      hideLoginLoading();
-      return;
+      hideLoginLoading(); return;
     }
-
-    // Pastikan overlay kekal (fallback inline handler dalam HTML sudah memaparkan overlay)
     showLoginLoading('Mengesahkan akaun…');
 
-    // URL halaman login semasa (untuk fallback redirect)
     const base = location.origin + location.pathname.replace(/[^/]+$/, '');
     const returnTo = base + 'login.html';
 
     postViaIframe('login', {email, password, returnTo}, (res)=>{
       if (res && res.ok && res.kind==='login'){
-        // postMessage berjaya
         saveSession(res.token, res.name, res.email);
-        hideLoginLoading();
-        location.href = 'dashboard.html';
+        // ambil akses selepas login
+        postViaIframe('myaccess', {token: res.token}, (ax)=>{
+          if (ax && ax.ok && Array.isArray(ax.access)){
+            localStorage.setItem('wfh_access', JSON.stringify(ax.access));
+          } else {
+            localStorage.setItem('wfh_access', JSON.stringify([]));
+          }
+          hideLoginLoading();
+          location.href = 'dashboard.html';
+        });
       } else if (res && (res.message === 'KATA LALUAN SALAH' || res.message === 'AKAUN TIADA')) {
-        // Gagal auth sebenar
         hideLoginLoading();
         setLoginStatus(res.message === 'KATA LALUAN SALAH' ? 'Kata laluan salah.' : 'Akaun tidak ditemui.', false);
       } else if (res && res.message === 'NO_MESSAGE') {
-        // Kemungkinan fallback redirect sedang berlaku
         setLoginLoadingMessage('Mengalihkan…');
-        // Biarkan overlay terpapar sehingga halaman redirect sendiri
       } else {
-        // Ralat umum
         hideLoginLoading();
         setLoginStatus('Login gagal. Cuba lagi.', false);
       }
@@ -139,12 +135,29 @@ function initForgot(){
   });
 }
 
+/* ====== Auth guard (fetch access juga) ====== */
 function ensureAuth(cb){
   const t = getToken();
   if (!t) { location.href = 'login.html'; return; }
   postViaIframe('verify', {token:t}, (res)=>{
-    if (res && res.ok) { if (cb) cb(res); }
-    else { clearSession(); location.href = 'login.html'; }
+    if (res && res.ok) {
+      // cuba gunakan access dari verify; jika tiada, fallback panggil myaccess
+      if (Array.isArray(res.access)){
+        localStorage.setItem('wfh_access', JSON.stringify(res.access));
+        if (cb) cb(res);
+      } else {
+        postViaIframe('myaccess', {token:t}, (ax)=>{
+          if (ax && ax.ok && Array.isArray(ax.access)){
+            localStorage.setItem('wfh_access', JSON.stringify(ax.access));
+          } else {
+            localStorage.setItem('wfh_access', JSON.stringify([]));
+          }
+          if (cb) cb(res);
+        });
+      }
+    } else {
+      clearSession(); location.href = 'login.html';
+    }
   });
 }
 
@@ -153,69 +166,56 @@ function logout(){
   postViaIframe('logout', {token:t}, ()=>{ clearSession(); location.href = 'login.html'; });
 }
 
-// ====== Password Change (for dashboard modal) ======
+/* ====== Change password ====== */
 function changePassword(oldPassword, newPassword, cb){
   const token = getToken();
   if (!token){ location.href = 'login.html'; return; }
-  // Validasi minimum di client (server masih WAJIB semak)
-  if (!oldPassword || !newPassword){
-    if (cb) cb({ok:false, message:'MEDAN_TAK_LENGKAP'});
-    return;
-  }
-  // FIX: action name mesti ikut backend (all lowercase)
-  postViaIframe('changepassword', { token, oldPassword, newPassword }, (res)=>{
-    // Jangkaan respons:
-    //  - { ok:true, kind:'changePassword' }
-    //  - { ok:false, message:'KATA LALUAN SALAH' }
-    //  - { ok:false, message:'AKAUN TIADA' }
-    //  - { ok:false, message:'NO_MESSAGE' } (fallback timeout)
-    if (cb) cb(res);
-  });
+  if (!oldPassword || !newPassword){ if (cb) cb({ok:false, message:'MEDAN_TAK_LENGKAP'}); return; }
+  postViaIframe('changepassword', { token, oldPassword, newPassword }, (res)=>{ if (cb) cb(res); });
 }
 
-// ====== Admin helpers & user management (client) ======
+/* ====== Admin helpers ====== */
 const ADMIN_EMAIL = 'missyahrul@unisel.edu.my';
-
 function isAdminEmail(email){
   return String(email || localStorage.getItem('wfh_email') || '').toLowerCase() === ADMIN_EMAIL;
 }
-
 function ensureAdminOrBack(backUrl){
   const e = localStorage.getItem('wfh_email') || '';
   if (!isAdminEmail(e)) { location.href = backUrl || 'dashboard.html'; }
 }
-
 function listUsers(cb){
   const token = getToken();
-  // FIX: action name ikut backend (lowercase)
   postViaIframe('listusers', { token }, (res)=>{ if (cb) cb(res); });
 }
-
-function addUser(email, cb){
+function addUser(email, pages, cb){
   const token = getToken();
-  // FIX: action name ikut backend (lowercase)
-  postViaIframe('adduser', { token, email }, (res)=>{ if (cb) cb(res); });
+  // pages: array of keys → hantar JSON
+  const accessJson = JSON.stringify(Array.isArray(pages)? pages : []);
+  postViaIframe('adduser', { token, email, access: accessJson }, (res)=>{ if (cb) cb(res); });
 }
-
 function deleteUser(email, cb){
   const token = getToken();
-  // FIX: action name ikut backend (lowercase)
   postViaIframe('deleteuser', { token, email }, (res)=>{ if (cb) cb(res); });
 }
+function updateUserAccess(email, pages, cb){
+  const token = getToken();
+  const accessJson = JSON.stringify(Array.isArray(pages)? pages : []);
+  postViaIframe('updateaccess', { token, email, access: accessJson }, (res)=>{ if (cb) cb(res); });
+}
 
-// ====== Expose globally ======
+/* ====== Helpers paparan ikut akses ====== */
+function getMyAccess(){
+  try{ return JSON.parse(localStorage.getItem('wfh_access')||'[]'); }catch(_){ return []; }
+}
+function canSee(key){ return getMyAccess().includes(key) || isAdminEmail(localStorage.getItem('wfh_email')); }
+
+/* ====== Expose ====== */
 window.WFH = {
   // umum
-  initLogin,
-  initForgot,
-  ensureAuth,
-  logout,
-  getToken,
-  changePassword,
+  initLogin, initForgot, ensureAuth, logout, getToken, changePassword,
   // admin
-  isAdminEmail,
-  ensureAdminOrBack,
-  listUsers,
-  addUser,
-  deleteUser
+  isAdminEmail, ensureAdminOrBack, listUsers, addUser, deleteUser, updateUserAccess,
+  // akses
+  getMyAccess, canSee
 };
+</script>
