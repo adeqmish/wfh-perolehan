@@ -130,13 +130,35 @@ function initForgot(){
   });
 }
 
+// ====== OPTION B: ensureAuth dengan retry anti-logout (network lag) ======
 function ensureAuth(cb){
   const t = getToken();
   if (!t) { location.href = 'login.html'; return; }
-  postViaIframe('verify', {token:t}, (res)=>{
-    if (res && res.ok) { if (cb) cb(res); }
-    else { clearSession(); location.href = 'login.html'; }
-  });
+
+  let attempts = 0;
+  const verify = ()=>{
+    postViaIframe('verify', {token:t}, (res)=>{
+      // Berjaya
+      if (res && res.ok) { if (cb) cb(res); return; }
+
+      // Backend sahkan token tak sah/luput
+      if (res && res.kind === 'verify' && res.ok === false) {
+        clearSession();
+        location.href = 'login.html';
+        return;
+      }
+
+      // Kegagalan bukan AUTH (contoh NO_MESSAGE / network), cuba lagi sehingga 3 kali
+      attempts++;
+      if (attempts < 3) {
+        setTimeout(verify, 1200);
+      } else {
+        // Last resort: redirect ke login tanpa clear token (biar user cuba semula)
+        location.href = 'login.html';
+      }
+    });
+  };
+  verify();
 }
 
 function logout(){
