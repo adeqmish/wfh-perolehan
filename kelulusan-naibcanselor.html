@@ -10,7 +10,17 @@
     body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);color:#e9eeff;min-height:100vh}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
     .brand{display:flex;align-items:center;gap:10px}
-    .brand img{width:40px;height:40px}
+    /* elak stretch: kekal nisbah asal */
+.brand img{
+  height: 36px;     /* boleh tukar 32–40 ikut sedap mata */
+  width: auto;      /* biar lebar ikut nisbah */
+  max-width: 160px; /* elak terlalu panjang kalau logo melintang */
+  display: block;   /* elak “jump” inline */
+}
+@media (max-width: 480px){
+  .brand img{ height: 30px; }  /* kecilkan sikit di mobile */
+}
+
     .nav a,.nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
 
     .wrap{max-width:1080px;margin:20px auto;padding:16px}
