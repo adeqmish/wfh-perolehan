@@ -1,6 +1,6 @@
 <script>
 /* ====== CONFIG ====== */
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec';
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbxIxemsXW4wDbk0rN7YyhRU0OcjNHAs_CWmyVfuddEb5_vz_ehVhi2CdCdqL0eY1dOy/exec';
 
 /* ====== Session ====== */
 function saveSession(token, name, email){
