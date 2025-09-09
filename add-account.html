@@ -21,7 +21,7 @@
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     fieldset{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
     legend{padding:0 8px;color:#cfd8ff}
-    .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+    .checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
     .check{display:flex;gap:8px;align-items:center}
     .actions{display:flex;gap:10px;align-items:center;margin-top:12px}
     .btn{padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
@@ -72,10 +72,16 @@
       <fieldset>
         <legend>Akses Laman</legend>
         <div class="checks" id="newAccessChecks">
-          <label class="check"><input type="checkbox" value="uploader" checked> Upload & Merge PO/PR</label>
+          <!-- Sedia ada -->
+          <label class="check"><input type="checkbox" value="uploader" checked> Upload &amp; Merge PO/PR</label>
           <label class="check"><input type="checkbox" value="combine" checked> Combine File (PDF)</label>
           <label class="check"><input type="checkbox" value="inventory"> Inventory</label>
           <label class="check"><input type="checkbox" value="reports"> Reports</label>
+          <!-- Tambahan baharu -->
+          <label class="check"><input type="checkbox" value="kelulusan-perolehan"> Kelulusan Perolehan</label>
+          <label class="check"><input type="checkbox" value="kelulusan-bendahari"> Kelulusan Bendahari</label>
+          <label class="check"><input type="checkbox" value="kelulusan-naibcanselor"> Kelulusan Naib Canselor</label>
+          <label class="check"><input type="checkbox" value="laporan-perolehan"> Laporan Perolehan</label>
         </div>
         <small class="muted">Nota: “Add Account” hanya untuk admin akaun.</small>
       </fieldset>
@@ -113,10 +119,16 @@
     <fieldset>
       <legend>Akses Laman</legend>
       <div class="checks" id="editAccessChecks">
-        <label class="check"><input type="checkbox" value="uploader"> Upload & Merge PO/PR</label>
+        <!-- Sedia ada -->
+        <label class="check"><input type="checkbox" value="uploader"> Upload &amp; Merge PO/PR</label>
         <label class="check"><input type="checkbox" value="combine"> Combine File (PDF)</label>
         <label class="check"><input type="checkbox" value="inventory"> Inventory</label>
         <label class="check"><input type="checkbox" value="reports"> Reports</label>
+        <!-- Tambahan baharu -->
+        <label class="check"><input type="checkbox" value="kelulusan-perolehan"> Kelulusan Perolehan</label>
+        <label class="check"><input type="checkbox" value="kelulusan-bendahari"> Kelulusan Bendahari</label>
+        <label class="check"><input type="checkbox" value="kelulusan-naibcanselor"> Kelulusan Naib Canselor</label>
+        <label class="check"><input type="checkbox" value="laporan-perolehan"> Laporan Perolehan</label>
       </div>
       <small class="muted">“Add Account” kekal admin-only.</small>
     </fieldset>
@@ -161,7 +173,7 @@
     });
   });
 
-  async function loadList(){
+  function loadList(){
     setStat('', true);
     WFH.listUsers((res)=>{
       const tb = document.getElementById('tbody');
