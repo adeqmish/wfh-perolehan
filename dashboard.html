@@ -51,13 +51,15 @@
       <a class="tile"        id="openPwd"       href="#">🔒 Tukar Kata Laluan</a>
       <!-- Admin only -->
       <a class="tile hidden" id="tileAddAcc"    href="add-account.html">➕ Add Account</a>
-      <!-- Coming soon (ikut access) -->
+      <!-- Access-based -->
       <a class="tile hidden" id="tileInventory" href="#" onclick="alert('Coming soon')">📦 Inventory (coming soon)</a>
       <a class="tile hidden" id="tileReports"   href="#" onclick="alert('Coming soon')">📊 Reports (coming soon)</a>
-      <a class="tile hidden" id="tilePerolehan" href="kelulusan-perolehan.html">📝 Kelulusan Perolehan</a>
-      <a class="tile hidden" id="tileBendahari" href="kelulusan-bendahari.html">💰 Kelulusan Bendahari</a>
-      <a class="tile hidden" id="tileNaibCanselor" href="kelulusan-naibcanselor.html">🎓 Kelulusan Naib Canselor</a>
-      <a class="tile hidden" id="tileLaporan" href="laporan-perolehan.html">📑 Laporan Perolehan</a>
+
+      <!-- 4 modul baru -->
+      <a class="tile hidden" id="tilePerolehan"     href="kelulusan-perolehan.html">📝 Kelulusan Perolehan</a>
+      <a class="tile hidden" id="tileBendahari"     href="kelulusan-bendahari.html">💰 Kelulusan Bendahari</a>
+      <a class="tile hidden" id="tileNaibCanselor"  href="kelulusan-naibcanselor.html">🎓 Kelulusan Naib Canselor</a>
+      <a class="tile hidden" id="tileLaporan"       href="laporan-perolehan.html">📑 Laporan Perolehan</a>
     </div>
   </main>
 
@@ -104,7 +106,10 @@
 
       // ADMIN: tunjuk SEMUA page tanpa tunggu akses backend
       if (WFH.isAdminEmail(email)) {
-        ['tileUploader','tileCombine','tileInventory','tileReports'].forEach(show);
+        [
+          'tileUploader','tileCombine','tileInventory','tileReports',
+          'tilePerolehan','tileBendahari','tileNaibCanselor','tileLaporan'
+        ].forEach(show);
         el('tip').textContent = 'Mod admin: semua modul dipaparkan.';
         return;
       }
@@ -123,10 +128,12 @@
         if (acc.includes('combine'))   show('tileCombine');
         if (acc.includes('inventory')) show('tileInventory');
         if (acc.includes('reports'))   show('tileReports');
-        if (acc.includes('kelulusan-perolehan')) show('tilePerolehan');
-        if (acc.includes('kelulusan-bendahari')) show('tileBendahari');
+
+        // 4 modul baru
+        if (acc.includes('kelulusan-perolehan'))    show('tilePerolehan');
+        if (acc.includes('kelulusan-bendahari'))    show('tileBendahari');
         if (acc.includes('kelulusan-naibcanselor')) show('tileNaibCanselor');
-        if (acc.includes('laporan-perolehan')) show('tileLaporan');
+        if (acc.includes('laporan-perolehan'))      show('tileLaporan');
       });
     });
 
