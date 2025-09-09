@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login – WFH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0b1020;--card:#121a33;--accent:#4da3ff;--muted:#b8c7ff;--ok:#34d399;--err:#ef4444}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);font-family:Inter,system-ui,Segoe UI,Arial;color:#e9eeff}
+    .card{background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);width:min(92%,420px);padding:24px}
+    h1{margin:.2rem 0 1rem;font-size:22px}
+    label{display:block;margin:.6rem 0 .3rem;font-weight:600}
+    input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    .actions{margin-top:16px}
+    button{width:100%;padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+    a{color:#9fb0ff;text-decoration:none}
+    .muted{margin-top:12px;color:var(--muted);text-align:center}
+    .status{margin-top:12px;font-size:14px}
+    .status.err{color:var(--err)}
+    .status.ok{color:var(--ok)}
+
+    /* Loading overlay */
+    .loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:9999}
+    .loading.show{display:flex}
+    .loading-box{width:min(92%,420px);text-align:center;background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px 22px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
+    .spinner{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;border:6px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <!-- Auto-login jika datang dengan #t=...&n=...&e=... -->
+  <script>
+    (function () {
+      var hash = location.hash ? location.hash.slice(1) : '';
+      if (!hash) return;
+      var p = new URLSearchParams(hash);
+      var t = p.get('t'), n = p.get('n'), e = p.get('e');
+      if (t) {
+        try {
+          localStorage.setItem('wfh_token', t);
+          if (n) localStorage.setItem('wfh_name', decodeURIComponent(n));
+          if (e) localStorage.setItem('wfh_email', decodeURIComponent(e));
+        } catch (_) {}
+        location.replace('dashboard.html');
+      }
+    })();
+  </script>
+
+  <div class="card">
+    <h1>Log Masuk</h1>
+    <form id="loginForm">
+      <label for="email">Emel</label>
+      <input id="email" name="email" type="email" required />
+      <label for="password">Kata Laluan</label>
+      <input id="password" name="password" type="password" required />
+      <div class="actions"><button type="submit" id="loginBtn">Masuk</button></div>
+      <div id="loginStatus" class="status"></div>
+    </form>
+    <div class="muted">
+      <a href="forgot.html">Lupa kata laluan?</a>
+    </div>
+  </div>
+
+  <!-- Loading overlay masa login -->
+  <div id="loginLoading" class="loading" aria-live="polite" aria-busy="true">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <h4>Sila tunggu…</h4>
+      <p id="loginLoadingMsg">Mengesahkan akaun</p>
+    </div>
+  </div>
+
+  <!-- Fallback: pastikan overlay muncul SEBELUM auth.js diproses -->
+  <script>
+    (function(){
+      var form = document.getElementById('loginForm');
+      if (!form) return;
+      form.addEventListener('submit', function(){
+        var ov = document.getElementById('loginLoading');
+        var msg = document.getElementById('loginLoadingMsg');
+        if (msg) msg.textContent = 'Mengesahkan akaun…';
+        if (ov) ov.classList.add('show');
+        // kunci butang supaya elak double submit
+        var btn = document.getElementById('loginBtn');
+        if (btn) btn.disabled = true;
+        // fallback auto-hide jika tiada respons langsung (contoh error jaringan)
+        setTimeout(function(){
+          var still = document.getElementById('loginLoading');
+          if (still && still.classList.contains('show')) {
+            still.classList.remove('show');
+            if (btn) btn.disabled = false;
+            var st = document.getElementById('loginStatus');
+            if (st){ st.textContent = 'Timeout. Cuba lagi.'; st.className = 'status err'; }
+          }
+        }, 15000);
+      }, {capture:true}); // capture supaya jalan paling awal
+    })();
+  </script>
+
+  <!-- Cache-buster supaya browser ambil auth.js versi terbaru -->
+  <script src="auth.js?v=login-loading-2025-09-05"></script>
+  <script>WFH.initLogin();</script>
+</body>
+</html>
