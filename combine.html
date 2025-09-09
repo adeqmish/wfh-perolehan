@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Combine File (PDF) – WFH</title>
+
+  <!-- PDF-LIB untuk gabung PDF client-side -->
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <style>
+    :root{--bg:#0b1020;--card:#121a33;--muted:#9fb0ff;--accent:#4da3ff;--ok:#34d399;--err:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);color:#e9eeff;min-height:100vh}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:40px;height:40px}
+    .nav a, .nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:#4da3ff;color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+
+    .wrap{max-width:980px;margin:20px auto;padding:16px}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:20px}
+
+    h2{margin:0 0 10px}
+    label{display:block;margin:12px 0 6px;font-weight:600}
+    input[type="file"], input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+    .list{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px}
+    .item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0e1733;margin:8px 0}
+    .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .btns{display:flex;gap:6px}
+    .btn{padding:8px 10px;border-radius:10px;border:0;background:#243055;color:#dbe6ff;cursor:pointer}
+    .btn:hover{background:#2b3a6a}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px}
+    .primary{background:var(--accent);color:#001333;font-weight:700}
+    .danger{background:#2a1320;color:#ffd1d9;border:1px solid rgba(255,255,255,.06)}
+    small{color:#cfd8ff}
+
+    .status{margin-top:10px}
+    .status.ok{color:var(--ok)}
+    .status.err{color:var(--err)}
+
+    /* Loading Overlay */
+    .loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:70}
+    .loading.show{display:flex}
+    .loading-box{width:min(92%,420px);text-align:center;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px 22px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
+    .spinner{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;border:6px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Drop zone ringkas */
+    .drop{margin-top:10px;padding:14px;border:2px dashed rgba(255,255,255,.15);border-radius:12px;text-align:center;color:#b8c7ff}
+    .drop.drag{border-color:#4da3ff;color:#dbe6ff;background:#0e1733}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL"/>
+      <div>
+        <div style="font-weight:700">WFH – Combine File (PDF)</div>
+        <small id="welcome"></small>
+      </div>
+    </div>
+    <div class="nav">
+      <a href="dashboard.html">Home</a>
+      <button onclick="WFH.logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>Combine Multiple PDF</h2>
+      <p class="muted">Muat naik beberapa PDF, susun ikut turutan, beri nama fail gabungan, kemudian tekan <b>Combine</b> untuk muat turun 1 dokumen.</p>
+
+      <div class="grid">
+        <!-- Kiri: Upload & Senarai -->
+        <div>
+          <label for="files">Pilih Fail PDF (boleh banyak sekaligus)</label>
+          <input id="files" type="file" accept="application/pdf" multiple />
+          <div id="drop" class="drop">atau seret & lepas PDF ke sini</div>
+
+          <label style="margin-top:16px">Senarai Fail (turutan gabungan)</label>
+          <div id="list" class="list" aria-live="polite"></div>
+          <small>Guna butang ▲▼ untuk susun semula. Boleh buang fail yang tersilap.</small>
+        </div>
+
+        <!-- Kanan: Tetapan Output -->
+        <div>
+          <label for="outName">Nama Fail Gabungan</label>
+          <input id="outName" type="text" placeholder="Contoh: Dokumen-Gabungan.pdf" />
+          <small>Jika kosong, sistem akan guna <b>Combined.pdf</b></small>
+
+          <div class="actions">
+            <button id="combineBtn" class="primary">Combine & Download</button>
+            <button id="resetBtn" class="btn danger">Reset</button>
+          </div>
+          <div id="status" class="status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading" aria-live="polite" aria-busy="true">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <h4>Memproses…</h4>
+      <p id="loading-msg">Menggabungkan PDF</p>
+    </div>
+  </div>
+
+  <!-- auth.js -->
+  <script src="auth.js"></script>
+  <script>
+    // Auth guard + salam
+    WFH.ensureAuth((res)=>{
+      document.getElementById('welcome').textContent = 'Log masuk sebagai ' + (localStorage.getItem('wfh_name') || res.email);
+    });
+
+    // Elemen asas
+    const input = document.getElementById('files');
+    const list  = document.getElementById('list');
+    const out   = document.getElementById('outName');
+    const combineBtn = document.getElementById('combineBtn');
+    const resetBtn   = document.getElementById('resetBtn');
+    const statusEl   = document.getElementById('status');
+    const loading    = document.getElementById('loading');
+    const loadingMsg = document.getElementById('loading-msg');
+    const drop       = document.getElementById('drop');
+
+    function showLoading(msg){ if (msg) loadingMsg.textContent = msg; loading.classList.add('show'); }
+    function hideLoading(){ loading.classList.remove('show'); }
+    function setStatus(msg, ok){ statusEl.textContent = msg || ''; statusEl.className = 'status ' + (ok ? 'ok' : 'err'); }
+
+    // Simpan fail yang dipilih dalam array (ikut turutan)
+    let files = [];
+
+    // Render list fail
+    function render(){
+      list.innerHTML = '';
+      if (!files.length){
+        const empty = document.createElement('div');
+        empty.style.color = '#9fb0ff';
+        empty.style.textAlign = 'center';
+        empty.style.padding = '16px';
+        empty.textContent = 'Tiada fail.';
+        list.appendChild(empty);
+        return;
+      }
+      files.forEach((f, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.setAttribute('data-idx', idx);
+
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = f.name + '  (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+
+        const btns = document.createElement('div'); btns.className='btns';
+
+        const up = document.createElement('button'); up.className='btn'; up.title='Naik (▲)'; up.textContent='▲';
+        up.onclick = ()=>{ if(idx>0){ const t=files[idx-1]; files[idx-1]=files[idx]; files[idx]=t; render(); } };
+
+        const down = document.createElement('button'); down.className='btn'; down.title='Turun (▼)'; down.textContent='▼';
+        down.onclick = ()=>{ if(idx<files.length-1){ const t=files[idx+1]; files[idx+1]=files[idx]; files[idx]=t; render(); } };
+
+        const del = document.createElement('button'); del.className='btn'; del.title='Buang'; del.textContent='Buang';
+        del.onclick = ()=>{ files.splice(idx,1); render(); };
+
+        btns.append(up, down, del);
+        row.append(name, btns);
+        list.appendChild(row);
+      });
+    }
+
+    // Tambah fail (skip yang bukan PDF)
+    function addFiles(fileList){
+      const arr = Array.from(fileList || []);
+      const pdfs = arr.filter(f=> f.type === 'application/pdf');
+      const non = arr.length - pdfs.length;
+      if (non>0) setStatus(non + ' fail di-skip (bukan PDF).', false);
+      files.push(...pdfs);
+      render();
+    }
+
+    // Input change
+    input.addEventListener('change', (e)=> addFiles(e.target.files));
+
+    // Drag & drop
+    ;['dragenter','dragover'].forEach(evt=> drop.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); drop.classList.add('drag'); }));
+    ;['dragleave','drop'].forEach(evt=> drop.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', (e)=>{ addFiles(e.dataTransfer.files); });
+
+    // Convert Uint8Array → Blob download
+    function downloadBytes(uint8, filename){
+      const blob = new Blob([uint8], {type:'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename || 'Combined.pdf';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    }
+
+    // Gabung PDF guna PDF-LIB (ikut turutan dalam array)
+    function uint8ToBase64(u8){ let binary=''; const chunk=0x8000; for(let i=0;i<u8.length;i+=chunk){ binary += String.fromCharCode.apply(null, u8.subarray(i,i+chunk)); } return btoa(binary); }
+
+    async function mergeAll(){
+      if (!files.length) { setStatus('Sila pilih sekurang-kurangnya satu PDF.', false); return; }
+      // Disaran ≤ ~100MB total untuk kelancaran browser
+      const totalSize = files.reduce((s,f)=>s+f.size,0);
+      if (totalSize > 120*1024*1024) {
+        setStatus('Jumlah saiz besar (' + (totalSize/1024/1024).toFixed(1) + ' MB). Pertimbangkan asingkan batch.', false);
+        // masih benarkan teruskan, tapi beri amaran
+      }
+
+      try{
+        showLoading('Menggabungkan PDF…');
+        const merged = await PDFLib.PDFDocument.create();
+
+        for (let i=0; i<files.length; i++){
+          const f = files[i];
+          const buf = await f.arrayBuffer();
+          const src = await PDFLib.PDFDocument.load(buf);
+          const pages = await merged.copyPages(src, src.getPageIndices());
+          pages.forEach(p => merged.addPage(p));
+        }
+
+        const bytes = await merged.save(); // Uint8Array
+        const name = (out.value.trim() || 'Combined.pdf').replace(/\s+/g,' ').replace(/\.pdf$/i,'') + '.pdf';
+        downloadBytes(bytes, name);
+        hideLoading();
+        setStatus('Berjaya digabung & dimuat turun: ' + name, true);
+      }catch(err){
+        console.error(err);
+        hideLoading();
+        setStatus('Ralat gabungan: ' + err, false);
+      }
+    }
+
+    // Tindakan
+    combineBtn.addEventListener('click', mergeAll);
+
+    resetBtn.addEventListener('click', ()=>{
+      files = [];
+      input.value = '';
+      out.value = '';
+      setStatus('', true);
+      render();
+    });
+
+    // Render awal
+    render();
+  </script>
+</body>
+</html>
