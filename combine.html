@@ -25,7 +25,29 @@
   .brand img{ height: 30px; }  /* kecilkan sikit di mobile */
 }
 
-    .nav a, .nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:#4da3ff;color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+    /* Susun butang & samakan saiz */
+.nav{ display:flex; gap:8px; }
+
+.nav a,
+.nav button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:40px;        /* tinggi sama */
+  min-width:120px;    /* lebar sama – boleh ubah 110–140px ikut sedap */
+  padding:0 16px;     /* padding mendatar, tiada overflow */
+  border-radius:12px;
+  border:0;
+  background:var(--accent);
+  color:#001333;
+  font-weight:600;    /* atau 700 jika mahu lebih tebal */
+  text-decoration:none;
+  line-height:1;      /* tengah betul-betul */
+}
+
+/* Kalau HTML ada <b> dalam <a>, neutralkan supaya tak lebih tebal dari Logout */
+.nav a b, .nav button b{ font-weight:inherit; }
+
 
     .wrap{max-width:980px;margin:20px auto;padding:16px}
     .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:20px}
