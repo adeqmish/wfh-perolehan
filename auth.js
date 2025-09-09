@@ -1,7 +1,7 @@
 /* =========================================================
    SETTINGS (ubah ikut projek tuan)
    ========================================================= */
-const APPS_URL = 'https://script.google.com/macros/s/AKfycbx-aUvBo37bHqWb6to6zPubbHA29acZ9i4HBaBhlXt6uofoT-xGa0nLGY6LPkRNrBuQ/exec';
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbx853pMuyOtdpgXu_tOygPtxdVgcP1L-bh1Y6kqZhWju-tqu4SkKkj0CuL0aOALvQDc/exec';
 const ADMIN_EMAILS = ['missyahrul@unisel.edu.my']; // tambah emel admin lain jika perlu
 
 /* =========================================================
