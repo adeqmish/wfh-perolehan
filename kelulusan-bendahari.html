@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kelulusan Bendahari – WFH</title>
+  <style>
+    :root{--bg:#0b1020;--card:#121a33;--muted:#9fb0ff;--accent:#4da3ff;--ok:#34d399;--err:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:linear-gradient(180deg,#0b1020,#0e1429 40%,#0b1020);color:#e9eeff;min-height:100vh}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:40px;height:40px}
+    .nav a,.nav button{margin-left:8px;padding:10px 14px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer;text-decoration:none}
+
+    .wrap{max-width:1080px;margin:20px auto;padding:16px}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 30px 120px rgba(0,0,0,.5);padding:18px}
+    h2{margin:2px 0 10px}
+    .muted{color:#b8c7ff}
+
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+    .toolbar input[type="text"]{flex:1 1 260px;min-width:220px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    .count{margin-left:auto;color:#9fb0ff;font-size:13px}
+
+    .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;max-height:62vh;overflow:auto;padding-right:4px}
+    .item{background:#0c132a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;display:grid;gap:10px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pr{font-weight:700}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#0e1733;border:1px solid rgba(255,255,255,.08);border-radius:40px;padding:6px 10px;font-size:12px;color:#cfd8ff}
+    .pill b{color:#e9eeff}
+    .row a.btn{padding:8px 10px;border-radius:10px;border:0;background:#243055;color:#dbe6ff;text-decoration:none}
+    .row a.btn:hover{background:#2b3a6a}
+    .row input[type="file"]{flex:1 1 240px;min-width:220px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0c132a;color:#e9eeff}
+    .row button{padding:10px 12px;border-radius:12px;border:0;background:var(--accent);color:#001333;font-weight:700;cursor:pointer}
+    .status{font-size:13px}
+    .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+    .empty{padding:18px;border:1px dashed rgba(255,255,255,.15);border-radius:14px;text-align:center;color:#9fb0ff}
+
+    /* Loading Overlay */
+    .loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);z-index:70}
+    .loading.show{display:flex}
+    .loading-box{width:min(92%,420px);text-align:center;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:26px 22px;box-shadow:0 30px 120px rgba(0,0,0,.6)}
+    .spinner{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;border:6px solid rgba(255,255,255,.12);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="https://bursary.unisel.edu.my/wp-content/uploads/sites/15/2024/05/cropped-unisel-2.png" alt="UNISEL"/>
+      <div>
+        <div style="font-weight:700">WFH – Kelulusan Bendahari</div>
+        <small id="welcome" class="muted"></small>
+      </div>
+    </div>
+    <div class="nav">
+      <a href="dashboard.html">Home</a>
+      <button onclick="WFH.logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="card">
+      <h2>Senarai PR dari Perolehan</h2>
+      <p class="muted">Muat turun dokumen Perolehan, kemudian muat naik versi Bendahari untuk dihantar kepada Naib Canselor. Item yang telah dihantar akan hilang dari senarai.</p>
+
+      <div class="toolbar">
+        <input id="search" type="text" placeholder="Cari PR No…" />
+        <div class="count"><span id="count">0</span> item</div>
+      </div>
+
+      <div id="list" class="list" aria-live="polite"></div>
+      <div id="empty" class="empty" style="display:none">Tiada PR menunggu tindakan Bendahari.</div>
+      <div id="status" class="status" style="margin-top:8px"></div>
+    </div>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading" aria-live="polite" aria-busy="true">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <h4>Memproses…</h4>
+      <p id="loading-msg">Memuatkan senarai</p>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    // ===== UI helpers
+    const el = (id)=>document.getElementById(id);
+    const listEl   = el('list');
+    const emptyEl  = el('empty');
+    const countEl  = el('count');
+    const statusEl = el('status');
+    const searchEl = el('search');
+    const loading  = el('loading');
+    const loadingMsg = el('loading-msg');
+
+    function setStatus(msg, ok){
+      statusEl.textContent = msg || '';
+      statusEl.className = 'status ' + (ok ? 'ok' : (msg ? 'err' : ''));
+    }
+    function showLoading(msg){ if (msg) loadingMsg.textContent = msg; loading.classList.add('show'); }
+    function hideLoading(){ loading.classList.remove('show'); }
+
+    // ===== Auth & load
+    let ALL = []; // full list from backend
+    let FILTERED = [];
+
+    WFH.ensureAuth((res)=>{
+      el('welcome').textContent = 'Log masuk sebagai ' + (localStorage.getItem('wfh_name') || res.email);
+      loadList();
+    });
+
+    function loadList(){
+      setStatus('', true);
+      showLoading('Memuatkan senarai…');
+      WFH.postViaIframe('listforbendahari', { token: WFH.getToken() }, (r)=>{
+        hideLoading();
+        if (!r || !r.ok || !Array.isArray(r.list)){
+          setStatus('Gagal memuatkan senarai.', false);
+          ALL = []; render(); return;
+        }
+        // r.list item: {prNo, stage:'PEROLEHAN', byEmail, fileUrl, fileName, fileId}
+        ALL = r.list.slice().sort((a,b)=> (a.prNo||'').localeCompare(b.prNo||''));
+        render();
+      });
+    }
+
+    function render(){
+      const q = (searchEl.value||'').trim().toLowerCase();
+      FILTERED = ALL.filter(x => !q || (String(x.prNo||'').toLowerCase().includes(q)));
+      listEl.innerHTML = '';
+      countEl.textContent = FILTERED.length;
+      if (!FILTERED.length){
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      FILTERED.forEach((row, idx)=>{
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.dataset.pr = row.prNo;
+
+        const top = document.createElement('div');
+        top.className = 'row';
+        const pr = document.createElement('div'); pr.className='pr'; pr.textContent = row.prNo || '(tiada PR)';
+        const stage = document.createElement('div'); stage.className='pill'; stage.innerHTML = 'Stage: <b>'+ (row.stage||'PEROLEHAN') +'</b>';
+        const by = document.createElement('div'); by.className='pill'; by.innerHTML = 'Oleh: <b>'+ (row.byEmail||'-') +'</b>';
+        top.append(pr, stage, by);
+
+        const mid = document.createElement('div');
+        mid.className = 'row';
+        const link = document.createElement('a');
+        link.className = 'btn'; link.target = '_blank';
+        link.href = row.fileUrl || '#';
+        link.textContent = '⬇️ Muat Turun Dokumen (Perolehan)';
+        mid.append(link);
+
+        const bot = document.createElement('div');
+        bot.className = 'row';
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept='application/pdf';
+        input.id = 'f_'+idx;
+        const btn = document.createElement('button');
+        btn.textContent = 'Hantar ke Naib Canselor';
+        btn.addEventListener('click', ()=> submitItem(row, input, btn));
+
+        bot.append(input, btn);
+
+        item.append(top, mid, bot);
+        listEl.appendChild(item);
+      });
+    }
+
+    searchEl.addEventListener('input', render);
+
+    function submitItem(row, inputEl, btnEl){
+      setStatus('', true);
+      const file = inputEl.files && inputEl.files[0];
+      if (!file){ setStatus('Sila pilih fail PDF untuk '+row.prNo+'.', false); return; }
+      if (file.type !== 'application/pdf'){ setStatus('Hanya PDF dibenarkan.', false); return; }
+      if (file.size > 15*1024*1024){ setStatus('Fail terlalu besar (max 15MB).', false); return; }
+
+      btnEl.disabled = true;
+      showLoading('Memuat naik untuk '+row.prNo+'…');
+
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const base64 = reader.result; // data:application/pdf;base64,....
+        WFH.postViaIframe('submitbendahari', {
+          token: WFH.getToken(),
+          prNo: row.prNo,
+          file: base64
+        }, (res)=>{
+          hideLoading();
+          if (res && res.ok){
+            // Buang item daripada ALL dan render semula
+            ALL = ALL.filter(x => x.prNo !== row.prNo);
+            render();
+            setStatus('PR '+row.prNo+' telah dihantar ke Naib Canselor.', true);
+          }else{
+            setStatus('Gagal hantar untuk '+row.prNo+'.', false);
+            btnEl.disabled = false;
+          }
+        });
+      };
+      reader.onerror = ()=>{
+        hideLoading();
+        setStatus('Ralat membaca fail untuk '+row.prNo+'.', false);
+        btnEl.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
