@@ -106,10 +106,19 @@
     const show = (id)=> el(id)?.classList.remove('hidden');
 
     // ===== Auth & Tiles Control =====
-    WFH.ensureAuth((res)=>{
-      const email = res.email || localStorage.getItem('wfh_email') || '';
-      const name  = localStorage.getItem('wfh_name') || email || 'User';
-      el('welcome').textContent = 'Hai, ' + name;
+document.addEventListener('DOMContentLoaded', ()=>{
+  const name = localStorage.getItem('wfh_name') || localStorage.getItem('wfh_email') || '';
+  if (name) el('welcome').textContent = 'Log masuk sebagai ' + name;
+  const t = WFH.getToken();
+  if (!t) { location.href='login.html'; return; }
+
+  // Warm-up backend (non-blocking)
+  WFH.postViaIframe('__echo', {}, ()=>{});
+
+  // Terus ambil data (server verify token)
+  loadList();
+});
+
 
       // Add Account hanya admin
       if (WFH.isAdminEmail(email)) show('tileAddAcc');
