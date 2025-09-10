@@ -136,10 +136,19 @@
     let FILTERED = [];
 
     // ===== Auth & Load summary
-    WFH.ensureAuth((res)=>{
-      el('welcome').textContent = 'Log masuk sebagai ' + (localStorage.getItem('wfh_name') || res.email);
-      loadSummary();
-    });
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const name = localStorage.getItem('wfh_name') || localStorage.getItem('wfh_email') || '';
+    const token = WFH.getToken();
+    if (!token) { location.href = 'login.html'; return; }
+
+    document.getElementById('welcome').textContent = 'Log masuk sebagai ' + name;
+
+    // (pilihan) Warm-up non-blocking – biar server “bangun” sementara user nampak UI
+    WFH.postViaIframe('__echo', {}, ()=>{});
+
+    // Terus panggil data (server akan verify token juga)
+    loadList();
+  });
 
     function loadSummary(){
       showLoading('Memuatkan ringkasan PR…');
